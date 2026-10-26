@@ -1,0 +1,171 @@
+import { BonumError } from './errors.js';
+import { isRecord } from './validation.js';
+
+/**
+ * Everything needed to build a {@link BonumAPIError}.
+ *
+ * @example
+ * ```ts
+ * const init: BonumAPIErrorInit = { message, status: 400, body, method: 'POST', path };
+ * ```
+ */
+export interface BonumAPIErrorInit {
+  message: string;
+  status: number;
+  body: unknown;
+  method: string;
+  path: string;
+  retryAfterMs?: number | null | undefined;
+}
+
+/**
+ * Bonum answered with an error status. Subclasses cover the common statuses.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumAPIError) console.error(error.status, error.method, error.path);
+ * ```
+ */
+export class BonumAPIError extends BonumError {
+  readonly code = 'api_error';
+  override readonly name: string = 'BonumAPIError';
+  /** HTTP status code. */
+  readonly status: number;
+  /** Parsed JSON error body, the truncated text body, or `null` when empty. */
+  readonly body: unknown;
+  /** HTTP method of the failed request. */
+  readonly method: string;
+  /** Path of the failed request, without the query string. */
+  readonly path: string;
+
+  constructor(init: BonumAPIErrorInit) {
+    super(init.message);
+    this.status = init.status;
+    this.body = init.body;
+    this.method = init.method;
+    this.path = init.path;
+  }
+}
+
+/**
+ * HTTP 400: Bonum rejected a field. `body.message` lists the problems.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumBadRequestError) console.error(error.body);
+ * ```
+ */
+export class BonumBadRequestError extends BonumAPIError {
+  override readonly name: string = 'BonumBadRequestError';
+}
+
+/**
+ * HTTP 401: the merchant key is missing, wrong, deactivated or from the other environment.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumAuthenticationError) alertOps('Check BONUM_MERCHANT_KEY');
+ * ```
+ */
+export class BonumAuthenticationError extends BonumAPIError {
+  override readonly name: string = 'BonumAuthenticationError';
+}
+
+/**
+ * HTTP 404: no such payment for this merchant in this environment.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumNotFoundError) return null;
+ * ```
+ */
+export class BonumNotFoundError extends BonumAPIError {
+  override readonly name: string = 'BonumNotFoundError';
+}
+
+/**
+ * HTTP 429: Bonum is rate limiting this merchant. Already retried.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumRateLimitError) await sleep(error.retryAfterMs ?? 5_000);
+ * ```
+ */
+export class BonumRateLimitError extends BonumAPIError {
+  override readonly name: string = 'BonumRateLimitError';
+  /** Milliseconds Bonum asked us to wait (`Retry-After`), or `null` when it did not say. */
+  readonly retryAfterMs: number | null;
+
+  constructor(init: BonumAPIErrorInit) {
+    super(init);
+    this.retryAfterMs = init.retryAfterMs ?? null;
+  }
+}
+
+/**
+ * HTTP 5xx: Bonum failed internally. Already retried where safe. Bonum support will ask for the
+ * `paymentId`.
+ *
+ * @example
+ * ```ts
+ * if (error instanceof BonumServerError) console.error('Bonum is having trouble', error.status);
+ * ```
+ */
+export class BonumServerError extends BonumAPIError {
+  override readonly name: string = 'BonumServerError';
+}
+
+const HINTS: ReadonlyMap<number, string> = new Map([
+  [400, 'Check the request parameters against the Bonum V2 API reference.'],
+  [
+    401,
+    'Check BONUM_MERCHANT_KEY and that the key belongs to this environment (sandbox keys only work on testpsp.bonum.mn).',
+  ],
+  [
+    404,
+    'The payment does not exist, belongs to another merchant or lives in the other environment.',
+  ],
+  [429, 'Bonum is rate limiting this merchant; slow down and try again later.'],
+]);
+
+const SERVER_HINT = 'If it keeps happening, contact Bonum support with the paymentId.';
+
+/** What the HTTP layer knows about a failed response. */
+export type ApiErrorDetails = Omit<BonumAPIErrorInit, 'message'>;
+
+/** Picks the error class for an HTTP status and writes a message that says what to do next. */
+export function createApiError(details: ApiErrorDetails): BonumAPIError {
+  const init: BonumAPIErrorInit = { ...details, message: apiErrorMessage(details) };
+  switch (details.status) {
+    case 400:
+      return new BonumBadRequestError(init);
+    case 401:
+      return new BonumAuthenticationError(init);
+    case 404:
+      return new BonumNotFoundError(init);
+    case 429:
+      return new BonumRateLimitError(init);
+    default:
+      return details.status >= 500 ? new BonumServerError(init) : new BonumAPIError(init);
+  }
+}
+
+function apiErrorMessage({ status, body, method, path }: ApiErrorDetails): string {
+  const detail = errorDetail(body).replace(/\.$/, '');
+  const hint = HINTS.get(status) ?? (status >= 500 ? SERVER_HINT : '');
+  return [
+    `Bonum returned HTTP ${status} for ${method} ${path}`,
+    detail ? `: ${detail}.` : '.',
+    hint ? ` ${hint}` : '',
+  ].join('');
+}
+
+// Bonum's error bodies look like NestJS defaults, where validation errors put an array in `message`.
+function errorDetail(body: unknown): string {
+  if (typeof body === 'string') return body;
+  if (!isRecord(body)) return '';
+  const { message, error } = body;
+  if (typeof message === 'string') return message;
+  if (Array.isArray(message)) return message.filter((item) => typeof item === 'string').join('; ');
+  return typeof error === 'string' ? error : '';
+}
