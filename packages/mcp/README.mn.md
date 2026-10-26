@@ -12,7 +12,8 @@
 Cursor, Claude Desktop, VS Code болон бусад аливаа MCP client-тэй ажиллана. Сервер хаана ч ижил,
 зөвхөн тохиргоо нь ялгаатай.
 
-Энэ сервер төлбөр илгээж чадахгүй: wallet токен зөвхөн бодит төхөөрөмжөөс ирдэг. Интеграцаа
+Энэ сервер төлбөр илгээх, нэхэмжлэх үүсгэх боломжгүй: wallet токен зөвхөн бодит төхөөрөмжөөс ирдэг
+бөгөөд Bonum PSP V2-д нэхэмжлэхийн API байхгүй. Интеграцаа
 бүтээхдээ [`bonum-psp`](https://github.com/Jack-infinite/bonum-psp/blob/main/packages/sdk/README.mn.md) SDK-г ашиглаарай.
 
 - [Хурдан эхлэх](#хурдан-эхлэх) · [Client бүрийн тохиргоо](#client-бүрийн-тохиргоо) ·
@@ -53,6 +54,25 @@ claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env
 - Сүүлийн `--env` болон `bonum` нэрийн хооронд өөр нэг тохиргоо (энд `--transport stdio`)
   байлгаарай. Эс бөгөөс CLI нэрийг дахиад нэг `KEY=value` хос гэж уншина.
 - Серверийн төлөв болон хэрэгслүүдийг харахын тулд Claude Code дотор `/mcp` ажиллуулна.
+
+#### Түлхүүрээ солих
+
+`claude mcp add` аль хэдийн байгаа серверийг хэзээ ч солихгүй: "MCP server bonum already exists" гэж
+зогсдог. Серверийг устгаад, хүссэн **бүх** утгатайгаар дахин нэм. `read -s` нууц мэдээллийг shell-ийн
+түүхэнд үлдээхгүй:
+
+```bash
+claude mcp remove bonum -s local
+read -s BONUM_MERCHANT_KEY     # paste the key and press Enter; nothing is shown
+read -s BONUM_WEBHOOK_SECRET
+claude mcp add --env BONUM_MERCHANT_KEY="$BONUM_MERCHANT_KEY" \
+  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" --env BONUM_ENV=sandbox \
+  --transport stdio bonum -- npx -y bonum-psp-mcp
+```
+
+Дараа нь Claude Code-ийг дахин эхлүүл, эсвэл `/mcp` дотор `bonum`-ыг дахин холбо: ажиллаж буй сервер
+хуучин утгуудаа хадгалсаар байдаг. Аль утга тохируулагдсаныг (утгыг өөрийг нь биш) харахын тулд
+_"Bonum-ын холболтоо шалгаач."_ гэж асуу.
 
 ### Claude Code: `.mcp.json` ашигласан багийн тохиргоо
 

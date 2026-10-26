@@ -11,7 +11,8 @@ check payments, explain why a webhook was rejected, and test your webhook endpoi
 forged, stale and duplicate webhooks. It works with Claude Code, Codex, Cursor, Claude Desktop,
 VS Code and any other MCP client. The server is the same everywhere; only the config differs.
 
-It cannot submit payments: wallet tokens only come from a real device. To build the integration,
+It cannot submit payments or create invoices: wallet tokens only come from a real device, and
+Bonum PSP V2 has no invoice API. To build the integration,
 use the [`bonum-psp`](https://github.com/Jack-infinite/bonum-psp/tree/main/packages/sdk) SDK.
 
 - [Quick start](#quick-start) · [Setup per client](#setup-per-client) ·
@@ -49,6 +50,24 @@ claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env
 - Keep another option (here `--transport stdio`) between the last `--env` and the name `bonum`.
   Otherwise the CLI reads the name as one more `KEY=value` pair.
 - Run `/mcp` inside Claude Code to see the server's status and tools.
+
+#### Changing the keys
+
+`claude mcp add` never replaces a server that already exists: it stops with "MCP server bonum
+already exists". Remove the server, then add it again with **all** the values you want. `read -s`
+keeps the secrets out of your shell history:
+
+```bash
+claude mcp remove bonum -s local
+read -s BONUM_MERCHANT_KEY     # paste the key and press Enter; nothing is shown
+read -s BONUM_WEBHOOK_SECRET
+claude mcp add --env BONUM_MERCHANT_KEY="$BONUM_MERCHANT_KEY" \
+  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" --env BONUM_ENV=sandbox \
+  --transport stdio bonum -- npx -y bonum-psp-mcp
+```
+
+Then restart Claude Code, or reconnect `bonum` in `/mcp`: a running server keeps its old values.
+Ask _"Check my Bonum connection."_ to see which values are set (never the values themselves).
 
 ### Claude Code: team setup with `.mcp.json`
 
