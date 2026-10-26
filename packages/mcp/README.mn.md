@@ -6,8 +6,6 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp-mcp)](./LICENSE)
 
-> **Албан ёсны бус төсөл. BONUM ХХК-тай холбоогүй бөгөөд тэдний дэмжлэгтэй төсөл биш.**
-
 **Bonum PSP V2**-д зориулсан [MCP](https://modelcontextprotocol.io) сервер. Энэ нь таны AI кодлох
 агентад төлбөр шалгах, webhook яагаад татгалзагдсаныг тайлбарлах, мөн таны webhook endpoint-ийг
 жинхэнэ, хуурамч, хуучирсан, давхардсан webhook-уудаар тестлэх боломж олгоно. Claude Code, Codex,

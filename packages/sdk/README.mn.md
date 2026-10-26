@@ -6,10 +6,6 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp)](./LICENSE)
 
-> **Албан ёсны бус төсөл. BONUM ХХК-тай холбоогүй бөгөөд тэдний дэмжлэгтэй төсөл биш.** Энэ бол
-> олон нийтийн хөгжүүлдэг SDK. API-ийн хувьд Bonum-ын
-> [V2 баримт бичиг](https://psp.bonum.mn/v2/integration-guide.html) л үнэн зөв эх сурвалж юм.
-
 **Bonum PSP V2**-д зориулсан TypeScript SDK: Apple Pay болон Google Pay төлбөрийг серверээсээ
 илгээж, банкны хариуг авч, Bonum-ын webhook-уудыг баталгаажуулна.
 

@@ -5,10 +5,6 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
-> **Unofficial — not affiliated with or endorsed by BONUM LLC.** This is an independent,
-> community-maintained project. For the API itself, Bonum's
-> [V2 documentation](https://psp.bonum.mn/v2/integration-guide.html) is the source of truth.
-
 A TypeScript toolkit for **Bonum PSP V2**, which processes Apple Pay and Google Pay payments
 asynchronously: you submit a wallet token, and the bank's answer arrives later by webhook or by
 lookup. Getting that flow right takes more than an HTTP call: raw-body signature checks,

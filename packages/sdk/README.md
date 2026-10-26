@@ -6,10 +6,6 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp)](./LICENSE)
 
-> **Unofficial — not affiliated with or endorsed by BONUM LLC.** This is a community SDK. For the
-> API itself, Bonum's [V2 documentation](https://psp.bonum.mn/v2/integration-guide.html) is the
-> source of truth.
-
 TypeScript SDK for **Bonum PSP V2**: submit Apple Pay and Google Pay payments from your server, get
 the bank's answer, and verify Bonum's webhooks.
 

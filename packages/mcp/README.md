@@ -6,8 +6,6 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp-mcp)](./LICENSE)
 
-> **Unofficial — not affiliated with or endorsed by BONUM LLC.**
-
 An [MCP](https://modelcontextprotocol.io) server for **Bonum PSP V2**. It lets your AI coding agent
 check payments, explain why a webhook was rejected, and test your webhook endpoint with genuine,
 forged, stale and duplicate webhooks. It works with Claude Code, Codex, Cursor, Claude Desktop,
