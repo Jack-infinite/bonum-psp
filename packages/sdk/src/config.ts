@@ -49,6 +49,8 @@ export const BONUM_BASE_URLS: Readonly<Record<BonumEnvironment, string>> = Objec
 export interface BonumClientOptions {
   /** Merchant key issued by Bonum. Defaults to env `BONUM_MERCHANT_KEY`. Server-side only. */
   merchantKey?: string | undefined;
+  /** Webhook signing secret(s) for `bonum.webhooks`. Defaults to env `BONUM_WEBHOOK_SECRET`. */
+  webhookSecret?: string | readonly string[] | undefined;
   /** `'sandbox'` or `'production'`. Defaults to env `BONUM_ENV`; there is no silent default. */
   environment?: BonumEnvironment | undefined;
   /** Override the API base URL, e.g. for a proxy. Must be `https:` (plain `http:` only for localhost). */

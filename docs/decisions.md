@@ -100,3 +100,40 @@ with whitespace or control characters inside is rejected, and the error never co
 
 `sleep` and `random` are client options documented as testing hooks. Retry tests then run
 deterministically without fake timers, and merchants can use the same hooks in their own tests.
+
+## D15. Unknown webhook event types are acknowledged
+
+A correctly signed webhook with an `eventType` this SDK does not know throws
+`BonumWebhookError('unsupported_event_type')`. The handler helpers answer it with
+`200 { "received": true, "ignored": true }`. A 4xx would make Bonum retry an event the merchant can
+never handle, until it gives up. The event type is checked before the other fields, because a new
+type may well have a different shape. `onError` still sees it, so it shows up in logs.
+
+## D16. Handler errors stay visible
+
+When `onEvent` throws (or verification fails unexpectedly), the handlers call `onError` and answer
+500 so Bonum retries. If no `onError` was given, the Fetch handler rethrows and the Express adapter
+calls `next(error)`. The framework then logs the error and answers 500. Silently swallowing it would
+hide a broken handler until Bonum stops retrying. Rejected webhooks (bad signature, stale timestamp)
+always get a 400 that names only the reason.
+
+## D17. Webhook event fields are typed loosely where Bonum may vary
+
+`PaymentAuthorizedEvent` and `PaymentFailedEvent` differ only in `eventType` and `status`.
+`providerReference` and `failureReason` are `string | null` on both: a declined payment may still
+carry a bank reference, and rejecting a genuine webhook over that would lose the event.
+`status` must still equal `eventType` (D3).
+
+## D18. Webhook secret handling
+
+Secrets are trimmed like the merchant key (D13), and an array of secrets supports rotation. Keys are
+imported once with Web Crypto and cached; a failed import is retried on the next call.
+`toleranceSeconds` defaults to Bonum's 300 and is limited to 1–3600, so replay protection cannot be
+switched off by accident. There is no option to skip the timestamp check (see D5).
+
+## D19. Examples run on the toolchain as is
+
+The Express example runs its TypeScript directly with Node's type stripping (Node 22.18 or later),
+so it needs no build step. The Next.js example builds with `next build` on TypeScript 7, so no
+TypeScript 6 fallback is needed anywhere. Its route handler creates the webhook verifier on the
+first request, so `next build` does not need the secret.

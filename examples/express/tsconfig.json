@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // Node runs these files directly (type stripping), so imports keep their .ts extension.
+    "allowImportingTsExtensions": true,
+    "isolatedDeclarations": false,
+    "declaration": false
+  },
+  "include": ["src"]
+}

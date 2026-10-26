@@ -125,3 +125,24 @@ export function testClient(
   });
   return { client, delays };
 }
+
+/** Obviously fake webhook secrets. */
+export const WEBHOOK_SECRET = 'test_webhook_secret';
+export const ROTATED_SECRET = 'test_webhook_secret_rotated';
+/** A fixed "now" for webhook tests, in Unix seconds. */
+export const NOW_SECONDS = 1_793_000_000;
+
+export const authorizedEvent = {
+  webhookId: '9d2b7a4e-1c3f-4e5a-8b6d-0f1e2d3c4b5a',
+  paymentId: PAYMENT_ID,
+  orderId: ORDER_ID,
+  eventType: 'AUTHORIZED',
+  status: 'AUTHORIZED',
+  amount: '150.50',
+  currency: 'MNT',
+  providerReference: 'BANK-REF-0001',
+  failureReason: null,
+  occurredAt: '2026-10-26T04:00:02.000Z',
+  walletType: 'APPLE_PAY',
+  binCategory: 'DOMESTIC',
+};

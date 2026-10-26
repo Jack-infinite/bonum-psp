@@ -4,6 +4,7 @@
     ".": {
       "entry": ["scripts/*.mjs"]
     },
-    "packages/*": {}
+    "packages/*": {},
+    "examples/*": {}
   }
 }

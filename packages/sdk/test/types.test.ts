@@ -2,16 +2,22 @@ import { describe, expectTypeOf, it } from 'vitest';
 import {
   type ApplePayPaymentToken,
   type BonumClient,
+  type BonumWebhookEvent,
+  type BonumWebhooks,
   type CurrencyCode,
   isTerminalStatus,
   type Payment,
+  type PaymentAuthorizedEvent,
+  type PaymentFailedEvent,
   type PaymentResult,
   type PaymentStatus,
   type PaymentSubmission,
   type SubmitApplePayParams,
   type SubmitGooglePayParams,
   type WalletType,
+  type WebhookPayload,
 } from '../src/index.js';
+import { createTestWebhookEvent } from '../src/testing.js';
 
 // These assertions run under `tsc --noEmit` (pnpm typecheck); Vitest only executes the bodies.
 describe('public types', () => {
@@ -60,5 +66,23 @@ describe('public types', () => {
     expectTypeOf<BonumClient['payments']['waitForResult']>()
       .parameter(0)
       .toEqualTypeOf<string | Pick<PaymentSubmission, 'paymentId'>>();
+  });
+
+  it('narrows webhook events on eventType', () => {
+    const event = { eventType: 'FAILED' } as BonumWebhookEvent;
+    if (event.eventType === 'FAILED') {
+      expectTypeOf(event).toEqualTypeOf<PaymentFailedEvent>();
+      expectTypeOf(event.status).toEqualTypeOf<'FAILED'>();
+    } else {
+      expectTypeOf(event).toEqualTypeOf<PaymentAuthorizedEvent>();
+    }
+    expectTypeOf<BonumWebhooks['verify']>().parameter(0).toEqualTypeOf<WebhookPayload>();
+  });
+
+  it('infers the event type created by the testing helper', () => {
+    expectTypeOf(createTestWebhookEvent()).toEqualTypeOf<PaymentAuthorizedEvent>();
+    expectTypeOf(
+      createTestWebhookEvent({ eventType: 'FAILED' }),
+    ).toEqualTypeOf<PaymentFailedEvent>();
   });
 });

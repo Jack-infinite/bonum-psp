@@ -50,3 +50,18 @@ export {
   WalletType,
 } from './types.js';
 export { VERSION } from './version.js';
+export {
+  BinCategory,
+  type BonumWebhookEvent,
+  type PaymentAuthorizedEvent,
+  type PaymentFailedEvent,
+  type WebhookEventBase,
+  WebhookEventType,
+} from './webhooks/event.js';
+export type { WebhookHandlerOptions } from './webhooks/handler.js';
+export type { WebhookHeaders } from './webhooks/headers.js';
+export {
+  BonumWebhooks,
+  type BonumWebhooksOptions,
+  type WebhookPayload,
+} from './webhooks/webhooks.js';

@@ -1,0 +1,23 @@
+{
+  "name": "bonum-psp-example-express",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Express 5 example for bonum-psp: Apple Pay submission endpoint and Bonum webhook",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "bonum-psp": "workspace:^",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5"
+  }
+}
