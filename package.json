@@ -1,0 +1,38 @@
+{
+  "name": "bonum-psp-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Unofficial TypeScript SDK and MCP server for Bonum PSP V2 (Apple Pay & Google Pay)",
+  "license": "MIT",
+  "author": "Jack Infinite",
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/sync-version.mjs && pnpm --recursive --filter \"./packages/*\" run build",
+    "dev": "pnpm --filter bonum-psp run dev",
+    "typecheck": "pnpm --recursive run typecheck",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "biome check . && knip",
+    "format": "biome check --write .",
+    "lint:packages": "pnpm --recursive --filter \"./packages/*\" run lint:package",
+    "check": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm lint:packages",
+    "changeset": "changeset",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@biomejs/biome": "^2.6.3",
+    "@changesets/cli": "^3.0.3",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "knip": "^6.43.0",
+    "publint": "^0.3.25",
+    "tsdown": "^0.23.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

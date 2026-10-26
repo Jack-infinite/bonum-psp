@@ -1,0 +1,55 @@
+{
+  "name": "bonum-psp-mcp",
+  "version": "0.1.0",
+  "description": "Unofficial MCP server for Bonum PSP V2 — check payments, verify webhooks and test your webhook endpoint from Claude Code, Codex, Cursor and other MCP clients",
+  "keywords": [
+    "bonum",
+    "bonum-psp",
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "payments",
+    "apple-pay",
+    "google-pay",
+    "webhook",
+    "mongolia"
+  ],
+  "homepage": "https://github.com/Jack-infinite/bonum-psp/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Jack-infinite/bonum-psp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jack-infinite/bonum-psp.git",
+    "directory": "packages/mcp"
+  },
+  "license": "MIT",
+  "author": "Jack Infinite",
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "bonum-psp-mcp": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.lib.json && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint:package": "publint --strict && attw --pack . --profile esm-only"
+  }
+}

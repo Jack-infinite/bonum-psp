@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+*.tgz
+*.log
+.DS_Store
+
+# Secrets never belong in the repo — use your shell or a secrets manager.
+.env
+.env.*
+!.env.example

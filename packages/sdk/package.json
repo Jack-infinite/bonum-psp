@@ -1,0 +1,53 @@
+{
+  "name": "bonum-psp",
+  "version": "0.1.0",
+  "description": "Unofficial TypeScript SDK for Bonum PSP V2 — Apple Pay & Google Pay payments and webhooks",
+  "keywords": [
+    "bonum",
+    "bonum-psp",
+    "mongolia",
+    "payments",
+    "apple-pay",
+    "google-pay",
+    "webhook",
+    "mnt",
+    "typescript",
+    "sdk"
+  ],
+  "homepage": "https://github.com/Jack-infinite/bonum-psp/tree/main/packages/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/Jack-infinite/bonum-psp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jack-infinite/bonum-psp.git",
+    "directory": "packages/sdk"
+  },
+  "license": "MIT",
+  "author": "Jack Infinite",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.lib.json && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint:package": "publint --strict && attw --pack . --profile esm-only"
+  }
+}
