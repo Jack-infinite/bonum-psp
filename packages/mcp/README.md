@@ -1,5 +1,7 @@
 # bonum-psp-mcp
 
+**English** | [Монгол](https://github.com/Jack-infinite/bonum-psp/blob/main/packages/mcp/README.mn.md)
+
 [![npm](https://img.shields.io/npm/v/bonum-psp-mcp)](https://www.npmjs.com/package/bonum-psp-mcp)
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp-mcp)](./LICENSE)

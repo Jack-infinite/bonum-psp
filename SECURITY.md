@@ -1,5 +1,7 @@
 # Security policy
 
+**English** | [Монгол](./SECURITY.mn.md)
+
 `bonum-psp` handles payment credentials and verifies payment webhooks, so security reports are very
 welcome.
 

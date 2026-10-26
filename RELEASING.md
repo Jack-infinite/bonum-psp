@@ -1,5 +1,7 @@
 # Releasing
 
+**English** | [Монгол](./RELEASING.mn.md)
+
 Both packages are versioned independently with [Changesets](https://changesets.dev) and published
 from GitHub Actions with npm **trusted publishing** (OIDC). The repository holds no npm token, and
 every release gets a provenance attestation.

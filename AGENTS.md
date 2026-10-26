@@ -147,3 +147,5 @@ in every change.
 - `pnpm check` must be green before a commit. Never build on a red check.
 - Use Conventional Commits with scopes such as `sdk`, `mcp`, `skill`, `docs`, `ci` and `deps`.
 - Add a changeset (`pnpm changeset`) for every user-facing change to a published package.
+- A document with a Mongolian copy (`X.mn.md` next to `X.md`) gets every change in both files.
+  Code blocks stay identical; only the prose is translated.

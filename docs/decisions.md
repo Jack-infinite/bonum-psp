@@ -1,5 +1,7 @@
 # Design decisions
 
+**English** | [Монгол](./decisions.mn.md)
+
 Short records of choices that Bonum's documentation leaves open, or where its pages disagree with
 each other. Each entry says what we do and why. The official docs are at
 <https://psp.bonum.mn/v2/integration-guide.html>.

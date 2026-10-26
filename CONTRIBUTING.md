@@ -1,5 +1,7 @@
 # Contributing
 
+**English** | [Монгол](./CONTRIBUTING.mn.md)
+
 Thanks for helping! This is an unofficial, community-maintained project for Bonum PSP V2. Bug
 reports, fixes, docs improvements and framework recipes are all welcome.
 
@@ -48,7 +50,9 @@ surprising.
   and write one or two sentences for the changelog. While the packages are at 0.x, use `minor` for
   breaking changes and `patch` for everything else. Docs-only and test-only changes need no
   changeset.
-- **Docs:** update the package README when you change behavior or the public API.
+- **Docs:** update the package README when you change behavior or the public API. Documents with
+  a Mongolian copy (`.mn.md`: the READMEs, CONTRIBUTING, SECURITY, RELEASING, `docs/decisions`)
+  need the same change in that copy.
 - **Bonum's documentation:** never copy its text into this repository; their pages carry a
   confidentiality notice. Describe things in your own words and link to
   <https://psp.bonum.mn/v2/>. Field names, endpoint paths and the signing algorithm are facts and
