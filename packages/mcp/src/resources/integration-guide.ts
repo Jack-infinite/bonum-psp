@@ -15,7 +15,9 @@ https://psp.bonum.mn/v2/integration-guide.html. If the two disagree, the officia
 4. The bank's answer then arrives in two independent ways:
    - a **webhook** to your registered endpoint. This is the source of truth; always handle it.
    - the **await endpoint** (\`waitForResult()\`), which holds the request open for up to 28 s so
-     the wallet sheet can show the real outcome.
+     the wallet sheet can show the real outcome. A sheet only knows success and failure: when the
+     wait ends with \`PENDING\`, close it with failure (as Bonum's guide does), show "processing"
+     and let the webhook settle the order.
 5. Fulfil the order only for \`AUTHORIZED\`. A \`FAILED\` payment carries a \`failureReason\`.
 
 ## Setup

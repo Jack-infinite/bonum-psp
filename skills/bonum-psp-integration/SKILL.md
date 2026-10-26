@@ -43,7 +43,9 @@ Check every change against this list:
      all deliver the same answer.
 6. **Wallet sheets use `waitForResult` within one deadline.** Use about 25 s for submit plus
    wait, inside the roughly 30 s a sheet stays open. A timeout or network error means "outcome
-   unknown": keep the order PENDING and never tell the customer it failed.
+   unknown": keep the order PENDING and never tell the customer it failed. The sheet itself only
+   knows success and failure, so close it with failure (as Bonum's guide does), then show a
+   "processing" screen until the webhook settles the order.
 7. **Reconcile stuck payments.** A scheduled job looks up orders still `PENDING` after a few
    minutes (`payments.get(paymentId)` or `payments.getByOrderId(orderId)`) and applies the same
    conditional update.

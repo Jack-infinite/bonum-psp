@@ -117,9 +117,10 @@ You can pass all of them as options instead (see [Configuration](#configuration-
 2. It POSTs the token and the order id to your backend, unchanged.
 3. Your backend decides the amount, submits the payment, and waits for the bank within one deadline
    that fits the roughly 30 seconds the sheet stays open.
-4. The app closes the sheet: success for `AUTHORIZED`, failure for `FAILED`. For `PENDING`, show
-   a "processing" state and let the webhook settle the order. Never report `PENDING` as a failure:
-   the customer might pay again.
+4. The app closes the sheet: success for `AUTHORIZED`, failure for `FAILED`. A sheet only knows
+   success and failure, so for `PENDING` it closes with failure too, as in Bonum's guide. Then the
+   app shows its own "processing" screen and the webhook settles the order. Never tell the customer
+   that a `PENDING` payment failed: it may still go through, and they might pay again.
 
 ```ts
 import {

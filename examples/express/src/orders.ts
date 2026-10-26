@@ -29,11 +29,15 @@ export function attachPayment(orderId: string, paymentId: string): void {
 }
 
 /** Applies a verified webhook at most once. Returns what happened, for logging. */
-export function applyWebhook(event: BonumWebhookEvent): 'duplicate' | 'applied' | 'already-final' {
+export function applyWebhook(
+  event: BonumWebhookEvent,
+): 'duplicate' | 'unknown-order' | 'applied' | 'already-final' {
   if (seenWebhookIds.has(event.webhookId)) return 'duplicate';
   seenWebhookIds.add(event.webhookId);
   const order = orders.get(event.orderId);
-  if (order === undefined || order.status !== 'PENDING') return 'already-final';
+  // Still answered with 200: a retry would not make the order appear (test events land here too).
+  if (order === undefined) return 'unknown-order';
+  if (order.status !== 'PENDING') return 'already-final';
   order.status = event.status;
   order.paymentId = event.paymentId;
   return 'applied';
