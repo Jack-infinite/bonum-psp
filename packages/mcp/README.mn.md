@@ -29,24 +29,37 @@ Node.js 22.12 эсвэл түүнээс хойшхи хувилбар хэрэг
 мэдээллээрээ нэмнэ:
 
 ```bash
-claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env BONUM_ENV=sandbox \
+claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... \
+  --env BONUM_GATEWAY_APP_SECRET=... --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY=... --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
-Дараа нь асуугаарай: _"Bonum-ын холболтоо шалгаач."_
+Дараа нь асуугаарай: _"Bonum-ын холболтоо шалгаач."_ эсвэл _"5000 төгрөгийн нэхэмжлэх үүсгэ."_
 
-Бүх хувьсагч заавал биш. Мерчант түлхүүргүй бол төлбөрийн хэрэгслүүд түүнийг хэрхэн тохируулахыг
-тайлбарлах бөгөөд webhook хэрэгслүүд ажилласаар байна. Webhook-ийн нууц түлхүүргүй бол эсрэгээрээ.
+Төлбөр болон нэхэмжлэх өөр өөр нууц мэдээлэл ашигладаг. Ашиглахгүй байгаагаа орхиорой:
+
+- **Төлбөр** (PSP V2): `BONUM_MERCHANT_KEY` ба `BONUM_WEBHOOK_SECRET`.
+- **Нэхэмжлэх** (Bonum Gateway): `create_invoice` ба `list_payment_providers`-д
+  `BONUM_GATEWAY_APP_SECRET` ба `BONUM_GATEWAY_TERMINAL_ID`, `verify_invoice_webhook`-д нэмээд
+  `BONUM_GATEWAY_CHECKSUM_KEY`. Гурвууланг нь Bonum-ын мерчант порталаас авна.
+
+Бүх хувьсагч заавал биш. Нууц мэдээлэл нь дутуу хэрэгсэл түүнийг хэрхэн тохируулахыг тайлбарлах
+бөгөөд бусад хэрэгслүүд ажилласаар байна.
 
 ## Client бүрийн тохиргоо
 
 MCP серверт **зөвхөн sandbox-ийн нууц мэдээлэл** өгөөрэй. Яагаад гэдгийг
-[аюулгүй байдлын загвар](#аюулгүй-байдлын-загвар) хэсгээс үзнэ үү.
+[аюулгүй байдлын загвар](#аюулгүй-байдлын-загвар) хэсгээс үзнэ үү. Бусад client-ийн жишээнд
+төлбөрийн түлхүүрүүд л байгаа; нэхэмжлэхийн хэрэгслүүдийг ашиглахын тулд `BONUM_GATEWAY_*`
+хувьсагчдыг яг адилхан нэмнэ.
 
 ### Claude Code
 
 ```bash
-claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env BONUM_ENV=sandbox \
+claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... \
+  --env BONUM_GATEWAY_APP_SECRET=... --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY=... --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
@@ -60,14 +73,20 @@ claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env
 
 `claude mcp add` аль хэдийн байгаа серверийг хэзээ ч солихгүй: "MCP server bonum already exists" гэж
 зогсдог. Серверийг устгаад, хүссэн **бүх** утгатайгаар дахин нэм. `read -s` нууц мэдээллийг shell-ийн
-түүхэнд үлдээхгүй:
+түүхэнд үлдээхгүй. Терминалын дугаар нууц биш тул шууд бичнэ. Ашиглахгүй нууц мэдээллийнхээ мөрийг
+хасаарай:
 
 ```bash
 claude mcp remove bonum -s local
 read -s BONUM_MERCHANT_KEY     # paste the key and press Enter; nothing is shown
 read -s BONUM_WEBHOOK_SECRET
+read -s BONUM_GATEWAY_APP_SECRET
+read -s BONUM_GATEWAY_CHECKSUM_KEY
 claude mcp add --env BONUM_MERCHANT_KEY="$BONUM_MERCHANT_KEY" \
-  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" --env BONUM_ENV=sandbox \
+  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" \
+  --env BONUM_GATEWAY_APP_SECRET="$BONUM_GATEWAY_APP_SECRET" \
+  --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY="$BONUM_GATEWAY_CHECKSUM_KEY" --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
@@ -90,6 +109,9 @@ shell орчиндоо хадгална:
       "env": {
         "BONUM_MERCHANT_KEY": "${BONUM_MERCHANT_KEY}",
         "BONUM_WEBHOOK_SECRET": "${BONUM_WEBHOOK_SECRET}",
+        "BONUM_GATEWAY_APP_SECRET": "${BONUM_GATEWAY_APP_SECRET}",
+        "BONUM_GATEWAY_TERMINAL_ID": "${BONUM_GATEWAY_TERMINAL_ID}",
+        "BONUM_GATEWAY_CHECKSUM_KEY": "${BONUM_GATEWAY_CHECKSUM_KEY}",
         "BONUM_ENV": "${BONUM_ENV:-sandbox}"
       }
     }
@@ -223,7 +245,7 @@ VS Code-ийн `.vscode/mcp.json` нь `mcpServers` биш `servers` ашигл�
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------- |
 | `BONUM_MERCHANT_KEY`                     | Төлбөрийн хэрэгслүүд (`check_connection`, `get_payment*`, `wait_for_payment_result`)                                     | —         |
 | `BONUM_WEBHOOK_SECRET`                   | Webhook хэрэгслүүд (`verify_webhook`, `create_test_webhook`, `send_test_webhook`)                                        | —         |
-| `BONUM_ENV`                              | Төлбөрийн хэрэгслүүд аль Bonum API-г дуудах: `sandbox` эсвэл `production`                                                | `sandbox` |
+| `BONUM_ENV`                              | Төлбөр болон нэхэмжлэхийн хэрэгслүүд аль Bonum API-г дуудах: `sandbox` эсвэл `production`                                | `sandbox` |
 | `BONUM_BASE_URL`                         | Bonum-ын API-гийн өмнө байрлах proxy (`https:`, localhost бол `http:`)                                                   | —         |
 | `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` | `send_test_webhook`-ийг локалаас бусад хост руу хандуулах                                                                | `false`   |
 | `BONUM_GATEWAY_APP_SECRET`               | Нэхэмжлэхийн хэрэгслүүд (`create_invoice`, `list_payment_providers`), terminal id-тай хамт; Bonum-ын мерчантын порталаас | —         |

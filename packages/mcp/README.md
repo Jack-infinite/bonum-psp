@@ -26,23 +26,36 @@ device. To build the integration, use the
 You need Node.js 22.12 or later. Add the server to Claude Code with your **sandbox** credentials:
 
 ```bash
-claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env BONUM_ENV=sandbox \
+claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... \
+  --env BONUM_GATEWAY_APP_SECRET=... --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY=... --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
-Then ask: _"Check my Bonum connection."_
+Then ask: _"Check my Bonum connection."_ or _"Create a 5000 MNT invoice."_
 
-Every variable is optional. Without a merchant key, the payment tools explain how to set one; the
-webhook tools still work. Without a webhook secret, it is the other way round.
+Payments and invoices use different credentials. Leave out the ones you don't use:
+
+- **Payments** (PSP V2): `BONUM_MERCHANT_KEY` and `BONUM_WEBHOOK_SECRET`.
+- **Invoices** (Bonum Gateway): `BONUM_GATEWAY_APP_SECRET` and `BONUM_GATEWAY_TERMINAL_ID` for
+  `create_invoice` and `list_payment_providers`, plus `BONUM_GATEWAY_CHECKSUM_KEY` for
+  `verify_invoice_webhook`. All three come from the Bonum merchant portal.
+
+Every variable is optional. A tool whose credentials are missing explains how to set them; the
+other tools still work.
 
 ## Setup per client
 
 Give the MCP server **sandbox credentials only**. See the [safety model](#safety-model) for why.
+The examples for the other clients show the payment keys; add the `BONUM_GATEWAY_*` variables the
+same way to use the invoice tools.
 
 ### Claude Code
 
 ```bash
-claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env BONUM_ENV=sandbox \
+claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... \
+  --env BONUM_GATEWAY_APP_SECRET=... --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY=... --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
@@ -56,14 +69,20 @@ claude mcp add --env BONUM_MERCHANT_KEY=... --env BONUM_WEBHOOK_SECRET=... --env
 
 `claude mcp add` never replaces a server that already exists: it stops with "MCP server bonum
 already exists". Remove the server, then add it again with **all** the values you want. `read -s`
-keeps the secrets out of your shell history:
+keeps the secrets out of your shell history. The terminal id is not a secret, so it is typed
+directly. Drop the lines for the credentials you don't use:
 
 ```bash
 claude mcp remove bonum -s local
 read -s BONUM_MERCHANT_KEY     # paste the key and press Enter; nothing is shown
 read -s BONUM_WEBHOOK_SECRET
+read -s BONUM_GATEWAY_APP_SECRET
+read -s BONUM_GATEWAY_CHECKSUM_KEY
 claude mcp add --env BONUM_MERCHANT_KEY="$BONUM_MERCHANT_KEY" \
-  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" --env BONUM_ENV=sandbox \
+  --env BONUM_WEBHOOK_SECRET="$BONUM_WEBHOOK_SECRET" \
+  --env BONUM_GATEWAY_APP_SECRET="$BONUM_GATEWAY_APP_SECRET" \
+  --env BONUM_GATEWAY_TERMINAL_ID=... \
+  --env BONUM_GATEWAY_CHECKSUM_KEY="$BONUM_GATEWAY_CHECKSUM_KEY" --env BONUM_ENV=sandbox \
   --transport stdio bonum -- npx -y bonum-psp-mcp
 ```
 
@@ -85,6 +104,9 @@ environment:
       "env": {
         "BONUM_MERCHANT_KEY": "${BONUM_MERCHANT_KEY}",
         "BONUM_WEBHOOK_SECRET": "${BONUM_WEBHOOK_SECRET}",
+        "BONUM_GATEWAY_APP_SECRET": "${BONUM_GATEWAY_APP_SECRET}",
+        "BONUM_GATEWAY_TERMINAL_ID": "${BONUM_GATEWAY_TERMINAL_ID}",
+        "BONUM_GATEWAY_CHECKSUM_KEY": "${BONUM_GATEWAY_CHECKSUM_KEY}",
         "BONUM_ENV": "${BONUM_ENV:-sandbox}"
       }
     }
@@ -218,7 +240,7 @@ once with `npm install -g bonum-psp-mcp` and run `bonum-psp-mcp`.
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------- |
 | `BONUM_MERCHANT_KEY`                     | The payment tools (`check_connection`, `get_payment*`, `wait_for_payment_result`)                                    | —         |
 | `BONUM_WEBHOOK_SECRET`                   | The webhook tools (`verify_webhook`, `create_test_webhook`, `send_test_webhook`)                                     | —         |
-| `BONUM_ENV`                              | Which Bonum API the payment tools call: `sandbox` or `production`                                                    | `sandbox` |
+| `BONUM_ENV`                              | Which Bonum APIs the payment and invoice tools call: `sandbox` or `production`                                       | `sandbox` |
 | `BONUM_BASE_URL`                         | A proxy in front of Bonum's API (`https:`, or `http:` for localhost)                                                 | —         |
 | `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` | Letting `send_test_webhook` reach hosts other than local ones                                                        | `false`   |
 | `BONUM_GATEWAY_APP_SECRET`               | The invoice tools (`create_invoice`, `list_payment_providers`), with the terminal id; from the Bonum merchant portal | —         |
