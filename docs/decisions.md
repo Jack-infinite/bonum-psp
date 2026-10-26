@@ -202,3 +202,33 @@ five-minute window. The payment tools add `normalizedCurrency` next to the uncha
 
 Some MCP clients support tools and prompts but not resources. Each prompt therefore states the rules
 it relies on in its own text, and points to the `bonum://` resources only for further reading.
+
+## D28. TypeScript 7 across the toolchain
+
+TypeScript 7 has no classic compiler API, but nothing in the chain needs it. tsdown generates
+declarations through the `isolatedDeclarations` (oxc) path, knip parses with oxc, and attw
+analyzes with the TypeScript 5.6 it ships itself. The `expectTypeOf` type tests are checked by the
+regular `tsc` run over the test files (`pnpm typecheck`), instead of by Vitest's typecheck mode. No
+tool needed a TypeScript 6 fallback (see also D19).
+
+## D29. How the MCP server is tested
+
+The tools are tested in-process through a real MCP `Client`. It talks to the server over the MCP
+SDK's HTTP handler (`createMcpHandler`) with an in-process `fetch`, which covers the current
+protocol revision. The SDK's in-memory transport only covers the 2025 revisions. The stdio path is
+covered by the smoke test, which spawns the built `dist/cli.js` (D20).
+
+## D30. Unexpanded `${VAR}` references are ignored
+
+The recommended `.mcp.json` passes secrets as `${BONUM_MERCHANT_KEY}`. When the variable is unset,
+Claude Code hands the literal text to the server, which would then sign with `${…}` as the secret
+or call Bonum with it as the key. `depsFromEnv` treats any value containing `${…}` as unset, adds a
+warning that names the variable to export, and switches off only the affected tools (D21).
+
+## D31. `branch_id` and the Apple Pay `amount` are optional pass-throughs
+
+The live API reference now lists `branch_id` for both wallets, not only in the integration guide.
+The SDK sends it, like `amount`, only when the caller provides it. Bonum's pages show `amount` for
+Apple Pay only in examples and never say whether it overrides the amount inside the token. The SDK
+sends exactly what the merchant passes, and the docs tell merchants to decide the amount on their
+server.

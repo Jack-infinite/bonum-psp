@@ -45,6 +45,20 @@ describe('depsFromEnv', () => {
     expect(deps.warnings).toEqual(['BONUM_ENV must be "sandbox" or "production"; using sandbox.']);
   });
 
+  it('ignores variable references that the MCP client left unexpanded, with a warning', () => {
+    const deps = depsFromEnv({
+      BONUM_MERCHANT_KEY: `\${BONUM_MERCHANT_KEY}`,
+      BONUM_WEBHOOK_SECRET: `\${env:BONUM_WEBHOOK_SECRET}`,
+      BONUM_ENV: `\${BONUM_ENV:-sandbox}`,
+    });
+    expect(deps).toMatchObject({ environment: 'sandbox', client: undefined, webhooks: undefined });
+    expect(deps.warnings).toEqual([
+      expect.stringMatching(/^BONUM_ENV is an unexpanded \$\{\.\.\.\} reference/),
+      expect.stringMatching(/^BONUM_MERCHANT_KEY is an unexpanded/),
+      expect.stringMatching(/^BONUM_WEBHOOK_SECRET is an unexpanded/),
+    ]);
+  });
+
   it('uses BONUM_BASE_URL, and turns the payment tools off when it is invalid', () => {
     expect(testDeps({ BONUM_BASE_URL: 'https://proxy.example/bonum/' }).baseUrl).toBe(
       'https://proxy.example/bonum',

@@ -42,10 +42,10 @@ export function depsFromEnv(env: Env, options: DepsFromEnvOptions = {}): BonumMc
   const fetch = options.fetch ?? ((url, init) => globalThis.fetch(url, init));
   const now = options.now ?? Date.now;
   const warnings: string[] = [];
-  const environment = readEnvironment(env.BONUM_ENV, warnings);
-  const merchantKey = readValue(env.BONUM_MERCHANT_KEY);
-  const webhookSecret = readValue(env.BONUM_WEBHOOK_SECRET);
-  const baseUrl = readValue(env.BONUM_BASE_URL);
+  const environment = readEnvironment(env, warnings);
+  const merchantKey = readValue(env, 'BONUM_MERCHANT_KEY', warnings);
+  const webhookSecret = readValue(env, 'BONUM_WEBHOOK_SECRET', warnings);
+  const baseUrl = readValue(env, 'BONUM_BASE_URL', warnings);
   const client =
     merchantKey === undefined
       ? undefined
@@ -56,7 +56,7 @@ export function depsFromEnv(env: Env, options: DepsFromEnvOptions = {}): BonumMc
     client,
     webhooks: webhookSecret === undefined ? undefined : createWebhookToolkit(webhookSecret, now),
     warnings,
-    allowRemoteWebhookTargets: readFlag(env.BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS, warnings),
+    allowRemoteWebhookTargets: readFlag(env, warnings),
     fetch,
     now,
     redact: createRedactor([merchantKey, webhookSecret]),
@@ -83,22 +83,33 @@ function state(dependency: object | undefined): string {
   return dependency === undefined ? 'not set' : 'set';
 }
 
-function readValue(raw: string | undefined): string | undefined {
+// MCP clients substitute `${VAR}` (Claude Code) or `${env:VAR}` (Cursor, VS Code) in their
+// configs. Claude Code passes a reference to an unset variable through as literal text, which
+// would otherwise become the merchant key or secret.
+const UNEXPANDED_REFERENCE = /\$\{[^}]*\}/;
+
+function readValue(env: Env, name: string, warnings: string[]): string | undefined {
   // Trimmed because MCP client configs and .env files often add stray whitespace or a newline.
-  const value = raw?.trim();
-  return value === '' ? undefined : value;
+  const value = env[name]?.trim();
+  if (value === undefined || value === '') return undefined;
+  if (!UNEXPANDED_REFERENCE.test(value)) return value;
+  warnings.push(
+    `${name} is an unexpanded \${...} reference, so it is ignored: set ${name} in the ` +
+      'environment that starts your MCP client.',
+  );
+  return undefined;
 }
 
-function readEnvironment(raw: string | undefined, warnings: string[]): BonumEnvironment {
-  const value = readValue(raw);
+function readEnvironment(env: Env, warnings: string[]): BonumEnvironment {
+  const value = readValue(env, 'BONUM_ENV', warnings);
   if (value === undefined || value === 'sandbox') return 'sandbox';
   if (value === 'production') return 'production';
   warnings.push('BONUM_ENV must be "sandbox" or "production"; using sandbox.');
   return 'sandbox';
 }
 
-function readFlag(raw: string | undefined, warnings: string[]): boolean {
-  const value = readValue(raw);
+function readFlag(env: Env, warnings: string[]): boolean {
+  const value = readValue(env, 'BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS', warnings);
   if (value === undefined || value === 'false') return false;
   if (value === 'true') return true;
   warnings.push(

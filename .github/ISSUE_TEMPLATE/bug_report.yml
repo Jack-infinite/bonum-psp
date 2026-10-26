@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in bonum-psp, bonum-psp-mcp or the skill does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! **Never paste a merchant key, webhook secret or customer data**:
+        replace them with `mk_test_example` / `test_webhook_secret`. Security problems belong in a
+        [private report](https://github.com/Jack-infinite/bonum-psp/security/advisories/new) instead.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - bonum-psp (SDK)
+        - bonum-psp-mcp (MCP server)
+        - bonum-psp-integration (Agent Skill)
+        - Docs or examples
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and framework
+      description: Node.js version (or Bun/Deno/Workers), framework, and for the MCP server the client (Claude Code, Codex, Cursor, …).
+      placeholder: "Node 24.11, Express 5.3, sandbox"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the error class, `code` and `reason` if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code or steps that show the problem, using fake credentials.
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed every merchant key, webhook secret and piece of customer data from this report.
+          required: true

@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an improvement or a new recipe.
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - bonum-psp (SDK)
+        - bonum-psp-mcp (MCP server)
+        - bonum-psp-integration (Agent Skill)
+        - Docs or examples
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe your use case before the solution you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What the API, tool or docs could look like.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: markdown
+    attributes:
+      value: |
+        Features that depend on Bonum's API (new endpoints, refunds, webhook registration) are only
+        possible once Bonum documents them. V1 endpoints and browser use are out of scope.

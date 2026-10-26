@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Jack-infinite/bonum-psp/security/advisories/new
+    about: Please report vulnerabilities privately, never in a public issue.
+  - name: Questions about your Bonum account, keys or the API itself
+    url: https://psp.bonum.mn/v2/integration-guide.html
+    about: This project is unofficial. For merchant onboarding, keys, webhook registration and API behavior, contact BONUM LLC.

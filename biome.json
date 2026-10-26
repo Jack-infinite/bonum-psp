@@ -46,6 +46,10 @@
     {
       "includes": ["**/*.config.ts", "**/*.config.mjs"],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": ["skills/**/SKILL.md", "CODE_OF_CONDUCT.md"],
+      "formatter": { "enabled": false }
     }
   ]
 }
