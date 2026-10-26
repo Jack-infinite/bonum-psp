@@ -21,6 +21,7 @@
     "lint:packages": "pnpm --recursive --filter \"./packages/*\" run lint:package",
     "check": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm lint:packages",
     "changeset": "changeset",
+    "version-packages": "changeset version && node scripts/sync-version.mjs",
     "release": "pnpm build && changeset publish"
   },
   "devDependencies": {

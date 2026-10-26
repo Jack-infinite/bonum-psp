@@ -232,3 +232,27 @@ The SDK sends it, like `amount`, only when the caller provides it. Bonum's pages
 Apple Pay only in examples and never say whether it overrides the amount inside the token. The SDK
 sends exactly what the merchant passes, and the docs tell merchants to decide the amount on their
 server.
+
+## D32. Release pipeline
+
+Releases use Changesets 3 with `changesets/action` v2, split into its sub-actions as Changesets
+recommends for trusted publishing. `select-mode` decides between versioning and publishing.
+`version` opens the "Version Packages" pull request (and regenerates `src/version.ts`, D8).
+`pack` runs `pnpm check` and packs each package with `pnpm pack`, which rewrites `workspace:^`.
+`publish` publishes the packed tarballs with `pnpm publish`. Only `publish` has
+`id-token: write`. Changesets 3 detects pnpm and calls `pnpm pack`/`pnpm publish` itself. pnpm 12
+is a native executable that performs the OIDC exchange and attaches provenance without the npm
+CLI, so the runner's npm version does not matter. Release jobs use no dependency cache and install
+with `--ignore-scripts`, which limits what a compromised dependency could do next to an OIDC token.
+Every action is pinned to a full commit SHA.
+
+## D33. Files Biome leaves alone
+
+Biome 2.6 also formats Markdown and YAML. Four kinds of files are excluded:
+
+- `CHANGELOG.md` files and `.changeset/*.md`, which Changesets writes and contributors edit,
+  because a formatting difference must not fail CI on the Version Packages pull request;
+- `skills/**/SKILL.md`, whose YAML front matter Biome would reshape;
+- `CODE_OF_CONDUCT.md`, the Contributor Covenant kept verbatim.
+
+Everything else, embedded code blocks in the READMEs included, is formatted and checked.
