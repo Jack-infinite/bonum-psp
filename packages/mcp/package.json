@@ -1,6 +1,6 @@
 {
   "name": "bonum-psp-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unofficial MCP server for Bonum PSP V2 — check payments, verify webhooks and test your webhook endpoint from Claude Code, Codex, Cursor and other MCP clients",
   "keywords": [
     "bonum",
