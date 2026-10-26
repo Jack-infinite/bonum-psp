@@ -1,5 +1,6 @@
 import { BONUM_BASE_URLS, BonumClient, type BonumEnvironment, type FetchFunction } from 'bonum-psp';
 import { type BonumMcpServerDeps, resolveDeps } from './deps.js';
+import { gatewayFromEnv } from './gateway-env.js';
 import { createRedactor } from './redact.js';
 import { VERSION } from './version.js';
 import { createWebhookToolkit } from './webhook-toolkit.js';
@@ -22,12 +23,16 @@ export interface DepsFromEnvOptions {
 type Env = Readonly<Record<string, string | undefined>>;
 
 // Tool calls are interactive: answer within seconds instead of the SDK's 15 s × 3 attempts.
-const API_TIMEOUT_MS = 10_000;
-const API_MAX_RETRIES = 1;
+const API_SETTINGS = {
+  timeoutMs: 10_000,
+  maxRetries: 1,
+  userAgent: `bonum-psp-mcp/${VERSION}`,
+} as const;
 
 /**
  * Builds the server's dependencies from `BONUM_MERCHANT_KEY`, `BONUM_WEBHOOK_SECRET`, `BONUM_ENV`
- * (default `sandbox`), `BONUM_BASE_URL` and `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS`. Never throws:
+ * (default `sandbox`), `BONUM_BASE_URL`, `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` and the
+ * `BONUM_GATEWAY_*` variables of the invoice tools. Never throws:
  * a missing or invalid value switches the affected tools off and becomes a warning, so the server
  * always starts and can tell the user what to fix.
  *
@@ -50,16 +55,23 @@ export function depsFromEnv(env: Env, options: DepsFromEnvOptions = {}): BonumMc
     merchantKey === undefined
       ? undefined
       : createClient({ merchantKey, environment, baseUrl, fetch }, warnings);
+  const allowRemoteWebhookTargets = readFlag(env, warnings);
+  const { secrets, ...gateway } = gatewayFromEnv(
+    (name) => readValue(env, name, warnings),
+    { ...API_SETTINGS, environment, fetch, now },
+    warnings,
+  );
   return {
     environment,
     baseUrl: client?.baseUrl ?? displayUrl(baseUrl) ?? BONUM_BASE_URLS[environment],
     client,
     webhooks: webhookSecret === undefined ? undefined : createWebhookToolkit(webhookSecret, now),
+    ...gateway,
     warnings,
-    allowRemoteWebhookTargets: readFlag(env, warnings),
+    allowRemoteWebhookTargets,
     fetch,
     now,
-    redact: createRedactor([merchantKey, webhookSecret]),
+    redact: createRedactor([merchantKey, webhookSecret, ...secrets]),
   };
 }
 
@@ -68,12 +80,14 @@ export function startupNotes(input: BonumMcpServerDeps): string[] {
   const deps = resolveDeps(input);
   const notes = [
     `${VERSION} serving MCP on stdio; Bonum ${deps.environment} (${deps.baseUrl}); ` +
-      `merchant key ${state(deps.client)}, webhook secret ${state(deps.webhooks)}.`,
+      `merchant key ${state(deps.client)}, webhook secret ${state(deps.webhooks)}, ` +
+      `gateway credentials ${state(deps.gateway)}, gateway checksum key ${state(deps.gatewayWebhooks)}.`,
     ...deps.warnings.map((warning) => `warning: ${warning}`),
   ];
   if (deps.environment === 'production') {
     notes.push(
-      'warning: BONUM_ENV=production: the payment tools read live data, and test webhooks are off.',
+      'warning: BONUM_ENV=production: the payment tools read live data, create_invoice creates ' +
+        'real invoices, and test webhooks are off.',
     );
   }
   return notes.map(deps.redact);
@@ -127,12 +141,7 @@ interface ClientSettings {
 
 function createClient(settings: ClientSettings, warnings: string[]): BonumClient | undefined {
   try {
-    return new BonumClient({
-      ...settings,
-      timeoutMs: API_TIMEOUT_MS,
-      maxRetries: API_MAX_RETRIES,
-      userAgent: `bonum-psp-mcp/${VERSION}`,
-    });
+    return new BonumClient({ ...settings, ...API_SETTINGS });
   } catch (error) {
     // SDK config errors never contain the key, so the message is safe to show.
     const reason = error instanceof Error ? error.message : String(error);

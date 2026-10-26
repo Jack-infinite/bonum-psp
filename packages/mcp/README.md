@@ -6,14 +6,15 @@
 [![CI](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jack-infinite/bonum-psp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/bonum-psp-mcp)](./LICENSE)
 
-An [MCP](https://modelcontextprotocol.io) server for **Bonum PSP V2**. It lets your AI coding agent
-check payments, explain why a webhook was rejected, and test your webhook endpoint with genuine,
-forged, stale and duplicate webhooks. It works with Claude Code, Codex, Cursor, Claude Desktop,
+An [MCP](https://modelcontextprotocol.io) server for **Bonum PSP V2** and **Bonum Gateway invoices**.
+It lets your AI coding agent check payments, create invoices with a checkout link (QPay, cards and
+more), explain why a webhook was rejected, and test your webhook endpoint with genuine, forged,
+stale and duplicate webhooks. It works with Claude Code, Codex, Cursor, Claude Desktop,
 VS Code and any other MCP client. The server is the same everywhere; only the config differs.
 
-It cannot submit payments or create invoices: wallet tokens only come from a real device, and
-Bonum PSP V2 has no invoice API. To build the integration,
-use the [`bonum-psp`](https://github.com/Jack-infinite/bonum-psp/tree/main/packages/sdk) SDK.
+It cannot submit Apple Pay or Google Pay payments, because wallet tokens only come from a real
+device. To build the integration, use the
+[`bonum-psp`](https://github.com/Jack-infinite/bonum-psp/tree/main/packages/sdk) SDK.
 
 - [Quick start](#quick-start) · [Setup per client](#setup-per-client) ·
   [Configuration](#configuration) · [Tools](#tools) · [Resources and prompts](#resources-and-prompts)
@@ -213,13 +214,17 @@ once with `npm install -g bonum-psp-mcp` and run `bonum-psp-mcp`.
 
 ## Configuration
 
-| Variable                                 | Needed for                                                                        | Default   |
-| ---------------------------------------- | --------------------------------------------------------------------------------- | --------- |
-| `BONUM_MERCHANT_KEY`                     | The payment tools (`check_connection`, `get_payment*`, `wait_for_payment_result`) | —         |
-| `BONUM_WEBHOOK_SECRET`                   | The webhook tools (`verify_webhook`, `create_test_webhook`, `send_test_webhook`)  | —         |
-| `BONUM_ENV`                              | Which Bonum API the payment tools call: `sandbox` or `production`                 | `sandbox` |
-| `BONUM_BASE_URL`                         | A proxy in front of Bonum's API (`https:`, or `http:` for localhost)              | —         |
-| `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` | Letting `send_test_webhook` reach hosts other than local ones                     | `false`   |
+| Variable                                 | Needed for                                                                                                           | Default   |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------- |
+| `BONUM_MERCHANT_KEY`                     | The payment tools (`check_connection`, `get_payment*`, `wait_for_payment_result`)                                    | —         |
+| `BONUM_WEBHOOK_SECRET`                   | The webhook tools (`verify_webhook`, `create_test_webhook`, `send_test_webhook`)                                     | —         |
+| `BONUM_ENV`                              | Which Bonum API the payment tools call: `sandbox` or `production`                                                    | `sandbox` |
+| `BONUM_BASE_URL`                         | A proxy in front of Bonum's API (`https:`, or `http:` for localhost)                                                 | —         |
+| `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` | Letting `send_test_webhook` reach hosts other than local ones                                                        | `false`   |
+| `BONUM_GATEWAY_APP_SECRET`               | The invoice tools (`create_invoice`, `list_payment_providers`), with the terminal id; from the Bonum merchant portal | —         |
+| `BONUM_GATEWAY_TERMINAL_ID`              | The invoice tools, with the app secret                                                                               | —         |
+| `BONUM_GATEWAY_CHECKSUM_KEY`             | `verify_invoice_webhook`                                                                                             | —         |
+| `BONUM_GATEWAY_BASE_URL`                 | A proxy in front of the Bonum Gateway API                                                                            | —         |
 
 The server always starts. A missing or invalid value switches off only the tools that need it, and
 those tools explain what to set. `check_connection` lists every configuration warning, and the
@@ -227,15 +232,18 @@ server prints them to stderr at startup. Values are trimmed, and are never print
 
 ## Tools
 
-| Tool                      | What it does                                                                                                                                                                                                   | Needs  | Hints                        |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------- |
-| `check_connection`        | Shows the environment, base URL and which credentials are set (yes/no only). Proves the key works by looking up a random payment id: Bonum answers 404 for a valid key and 401 for an invalid one. Start here. | —      | read-only, idempotent        |
-| `get_payment`             | Gets a payment by Bonum `paymentId` (UUID), with `isTerminal` and a normalized currency.                                                                                                                       | key    | read-only, idempotent        |
-| `get_payment_by_order_id` | The same, by your `order_id`.                                                                                                                                                                                  | key    | read-only, idempotent        |
-| `wait_for_payment_result` | Waits up to `waitMs` (1–28 000, default 25 000) for the bank's answer to a PENDING payment.                                                                                                                    | key    | read-only                    |
-| `verify_webhook`          | Checks a captured webhook (exact raw body, `X-PSP-Signature`, `X-PSP-Timestamp`) and explains any failure. `ignoreTimestamp` replays old captures.                                                             | secret | read-only, idempotent, local |
-| `create_test_webhook`     | Signs a realistic AUTHORIZED or FAILED webhook and returns the body, headers and a ready `curl` command. The signature is valid for 5 minutes.                                                                 | secret | read-only, local             |
-| `send_test_webhook`       | Sends test webhooks to your endpoint and grades each answer. Scenarios: `authorized`, `failed`, `duplicate`, `invalid_signature`, `stale_timestamp` or `all` (default).                                        | secret | sends requests, local        |
+| Tool                      | What it does                                                                                                                                                                                                                       | Needs               | Hints                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------- |
+| `check_connection`        | Shows the environment, base URL and which credentials are set (yes/no only). Proves the key works by looking up a random payment id: Bonum answers 404 for a valid key and 401 for an invalid one. Start here.                     | —                   | read-only, idempotent        |
+| `get_payment`             | Gets a payment by Bonum `paymentId` (UUID), with `isTerminal` and a normalized currency.                                                                                                                                           | key                 | read-only, idempotent        |
+| `get_payment_by_order_id` | The same, by your `order_id`.                                                                                                                                                                                                      | key                 | read-only, idempotent        |
+| `wait_for_payment_result` | Waits up to `waitMs` (1–28 000, default 25 000) for the bank's answer to a PENDING payment.                                                                                                                                        | key                 | read-only                    |
+| `verify_webhook`          | Checks a captured webhook (exact raw body, `X-PSP-Signature`, `X-PSP-Timestamp`) and explains any failure. `ignoreTimestamp` replays old captures.                                                                                 | secret              | read-only, idempotent, local |
+| `create_test_webhook`     | Signs a realistic AUTHORIZED or FAILED webhook and returns the body, headers and a ready `curl` command. The signature is valid for 5 minutes.                                                                                     | secret              | read-only, local             |
+| `send_test_webhook`       | Sends test webhooks to your endpoint and grades each answer. Scenarios: `authorized`, `failed`, `duplicate`, `invalid_signature`, `stale_timestamp` or `all` (default).                                                            | secret              | sends requests, local        |
+| `create_invoice`          | Creates a Bonum Gateway invoice and returns its checkout link (`followUpLink`). `amount` in MNT; optional `transactionId` (generated when omitted), `expiresIn` (default 3600 s), `callbackUrl`, `providers`, `items`, `language`. | gateway credentials | creates an invoice           |
+| `list_payment_providers`  | Lists the payment methods (QPay, cards, WeChat Pay, …) and whether each is enabled for your terminal.                                                                                                                              | gateway credentials | read-only, idempotent        |
+| `verify_invoice_webhook`  | Checks a captured invoice webhook (exact raw body and `X-Checksum-V2`) and explains any failure.                                                                                                                                   | checksum key        | read-only, idempotent, local |
 
 `send_test_webhook` expects a 2xx for genuine events, for both copies of a duplicate, and a 4xx for
 the forged and the 10-minute-old webhook. A 2xx for either of those is reported as a **security
@@ -244,6 +252,10 @@ would keep retrying.
 
 Payment results carry `environment`. With `BONUM_ENV=production`, their text starts with a
 production warning.
+
+Bonum reports an invoice's result only by webhook, to the URL registered in the merchant portal,
+and offers no status lookup for invoices. Ask the agent to verify a captured invoice webhook with
+`verify_invoice_webhook`. `check_connection` also checks the gateway credentials.
 
 ## Resources and prompts
 
@@ -276,14 +288,18 @@ In Claude Code, prompts are slash commands: `/mcp__bonum__integrate_bonum nextjs
 - _"Test my webhook at http://localhost:3000/webhooks/bonum."_
 - _"My webhook says signature mismatch. Here are the raw body and headers I logged: …"_
 - _"Create a signed FAILED test webhook for order ORD-7 and give me the curl command."_
+- _"Create a 5000 MNT invoice and give me the payment link."_
+- _"Which payment methods are enabled on my Bonum terminal?"_
 
 ## Safety model
 
-- **Read-only towards Bonum.** The payment tools only look payments up. There is no tool that
-  submits, refunds or changes anything.
+- **One write, on request.** The payment tools only look payments up. The only tool that creates
+  something at Bonum is `create_invoice`. It is not marked read-only, so clients ask before running
+  it, and its description tells the agent to confirm the amount. No tool submits, refunds or
+  cancels anything.
 - **Secrets only from the environment.** No tool takes a key or secret as an argument, and none
   repeats one. As a last line of defense, every output passes through a redactor that removes the
-  configured key and secret.
+  configured key and secrets (merchant key, webhook secret, gateway app secret and checksum key).
 - **Test webhooks stay local.** `send_test_webhook` only accepts `http`/`https` URLs without
   credentials, and by default only these hosts: `localhost`, `127.0.0.1`, `[::1]`, `*.localhost`
   and `*.test`. Anything else needs `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS=true`. It never follows

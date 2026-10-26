@@ -115,27 +115,18 @@ export class BonumServerError extends BonumAPIError {
   override readonly name: string = 'BonumServerError';
 }
 
-const HINTS: ReadonlyMap<number, string> = new Map([
-  [400, 'Check the request parameters against the Bonum V2 API reference.'],
-  [
-    401,
-    'Check BONUM_MERCHANT_KEY and that the key belongs to this environment (sandbox keys only work on testpsp.bonum.mn).',
-  ],
-  [
-    404,
-    'The payment does not exist, belongs to another merchant or lives in the other environment.',
-  ],
-  [429, 'Bonum is rate limiting this merchant; slow down and try again later.'],
-]);
-
-const SERVER_HINT = 'If it keeps happening, contact Bonum support with the paymentId.';
+/** Next-step advice per API: by HTTP status, and for any 5xx. */
+export interface ErrorHints {
+  readonly byStatus: ReadonlyMap<number, string>;
+  readonly server: string;
+}
 
 /** What the HTTP layer knows about a failed response. */
 export type ApiErrorDetails = Omit<BonumAPIErrorInit, 'message'>;
 
 /** Picks the error class for an HTTP status and writes a message that says what to do next. */
-export function createApiError(details: ApiErrorDetails): BonumAPIError {
-  const init: BonumAPIErrorInit = { ...details, message: apiErrorMessage(details) };
+export function createApiError(details: ApiErrorDetails, hints: ErrorHints): BonumAPIError {
+  const init: BonumAPIErrorInit = { ...details, message: apiErrorMessage(details, hints) };
   switch (details.status) {
     case 400:
       return new BonumBadRequestError(init);
@@ -150,9 +141,12 @@ export function createApiError(details: ApiErrorDetails): BonumAPIError {
   }
 }
 
-function apiErrorMessage({ status, body, method, path }: ApiErrorDetails): string {
+function apiErrorMessage(
+  { status, body, method, path }: ApiErrorDetails,
+  hints: ErrorHints,
+): string {
   const detail = errorDetail(body).replace(/\.$/, '');
-  const hint = HINTS.get(status) ?? (status >= 500 ? SERVER_HINT : '');
+  const hint = hints.byStatus.get(status) ?? (status >= 500 ? hints.server : '');
   return [
     `Bonum returned HTTP ${status} for ${method} ${path}`,
     detail ? `: ${detail}.` : '.',
@@ -160,12 +154,19 @@ function apiErrorMessage({ status, body, method, path }: ApiErrorDetails): strin
   ].join('');
 }
 
-// Bonum's error bodies look like NestJS defaults, where validation errors put an array in `message`.
+// PSP error bodies look like NestJS defaults, where validation errors put an array in `message`.
+// Gateway bodies carry a generic `message` and name the rejected fields in a `data` object.
 function errorDetail(body: unknown): string {
   if (typeof body === 'string') return body;
   if (!isRecord(body)) return '';
-  const { message, error } = body;
-  if (typeof message === 'string') return message;
+  const { message, error, data } = body;
+  const fields = isRecord(data)
+    ? Object.entries(data)
+        .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+        .map(([field, problem]) => `${field}: ${problem}`)
+    : [];
+  const suffix = fields.length === 0 ? '' : ` (${fields.join('; ')})`;
+  if (typeof message === 'string') return message + suffix;
   if (Array.isArray(message)) return message.filter((item) => typeof item === 'string').join('; ');
   return typeof error === 'string' ? error : '';
 }

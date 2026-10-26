@@ -12,7 +12,17 @@ import { createBonumMcpServer } from '../src/server.js';
  */
 export const MERCHANT_KEY = 'mk_test_mcp_suite';
 export const WEBHOOK_SECRET = 'test_secret_mcp_suite';
-export const SECRETS: readonly string[] = [MERCHANT_KEY, WEBHOOK_SECRET];
+export const APP_SECRET = 'app_secret_mcp_suite';
+export const CHECKSUM_KEY = 'checksum_key_mcp_suite';
+export const TERMINAL_ID = '00000042';
+export const SECRETS: readonly string[] = [MERCHANT_KEY, WEBHOOK_SECRET, APP_SECRET, CHECKSUM_KEY];
+
+/** Env that turns the invoice tools on, with fake credentials. */
+export const GATEWAY_ENV: Readonly<Record<string, string>> = {
+  BONUM_GATEWAY_APP_SECRET: APP_SECRET,
+  BONUM_GATEWAY_TERMINAL_ID: TERMINAL_ID,
+  BONUM_GATEWAY_CHECKSUM_KEY: CHECKSUM_KEY,
+};
 
 export const PAYMENT_ID = '3f0c5d2e-8b1a-4c6f-9e7d-2a1b0c9d8e7f';
 export const ORDER_ID = 'ORD-1001';
@@ -93,6 +103,8 @@ export interface BonumCall {
   url: URL;
   method: string;
   headers: Headers;
+  /** The JSON request body, parsed. */
+  body: unknown;
 }
 
 /** A fake Bonum API: answers every request with `reply` and records what was asked. */
@@ -106,6 +118,7 @@ export function fakeBonum(reply: (call: BonumCall) => Response | Promise<Respons
       url: new URL(url),
       method: init.method ?? 'GET',
       headers: new Headers(init.headers),
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
     };
     calls.push(call);
     return reply(call);

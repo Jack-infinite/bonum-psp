@@ -258,3 +258,72 @@ Biome 2.6 also formats Markdown and YAML. Four kinds of files are excluded:
 - `CODE_OF_CONDUCT.md`, the Contributor Covenant kept verbatim.
 
 Everything else, embedded code blocks in the READMEs included, is formatted and checked.
+
+## D34. Gateway invoices get their own client
+
+Bonum's Gateway API (invoices with a hosted checkout page) differs from PSP V2 in host
+(`testapi.bonum.mn` / `apis.bonum.mn`), authentication (an app secret and terminal id exchanged
+for a bearer token) and webhook signing. It is therefore a separate `BonumGatewayClient` with its
+own `BONUM_GATEWAY_*` variables, sharing only the transport options and HTTP layer with
+`BonumClient`. Bonum documents it in a [Postman collection](https://documenter.getpostman.com/view/6164222/2sB2cYbzu8)
+rather than on psp.bonum.mn. The rules below were confirmed against the test environment on
+2026-10-26.
+
+## D35. Creating an invoice is never retried
+
+Unlike `order_id` in PSP V2 (D10), a repeated `transactionId` is not an idempotency key: Bonum
+answers HTTP 409 instead of returning the first invoice. A retry after a lost response could
+therefore never succeed, and could hide that the first attempt worked. `invoices.create()` sends
+exactly once; its timeout message says the invoice may exist and that its webhook will carry the
+`transactionId`. Bonum also answers some invalid input (an unknown provider, a missing field) with
+HTTP 500, another reason not to retry. Listing providers is retried as usual.
+
+## D36. No invoice status lookup
+
+Bonum's invoice status endpoint is marked as testing-only, and in the test environment it answers
+"DO NOT USE this" (HTTP 400) for every invoice. Bonum tells merchants to rely on their own records
+and the webhook. The SDK and the MCP server therefore offer no status call; the docs say so.
+
+## D37. Gateway access tokens
+
+The token endpoint is rate-limited and Bonum asks clients to reuse tokens. `GatewayTokens` caches
+one token per client, shares one request between concurrent callers, and renews at the later of
+"60 s before expiry" and "half the lifetime", so short-lived tokens are not fetched on every call.
+It refreshes with the refresh token while that is valid, and falls back to the app secret when
+Bonum rejects the refresh token (a 4xx other than 429). A 401 on an API call drops the access
+token and repeats the call once: a 401 means Bonum did not act on it, so this is safe even for
+`create()`. Even if a proxy answered 401 after Bonum had created the invoice, the repeat would get
+a 409 for the same `transactionId`, never a second invoice. Only the token Bonum rejected is
+dropped, so late 401s from concurrent requests do not discard a token that was just renewed. A
+caller's abort stops its wait for a token without cancelling the shared token request. Bodies of
+token responses, successful or not, are never attached to errors, because they may contain tokens.
+
+## D38. Gateway webhook verification
+
+The `X-Checksum-V2` header is the hex HMAC-SHA256 of the body under the merchant's checksum key.
+The SDK checks it over the raw bytes, with the same constant-time Web Crypto verifier as PSP
+webhooks. Bonum's sample computes the checksum over the body re-serialized without whitespace, so
+if the raw bytes do not match, the compact re-serialization is tried as well; both are keyed MACs,
+so this accepts no forgery. These webhooks carry no timestamp, so there is no replay window: the
+docs tell merchants to make fulfilment idempotent per `transactionId`. A `type` other than
+`PAYMENT` (such as `CARD-TOKEN`) is `unsupported_event_type`, acknowledged like D15. Only `status`
+and `body.transactionId` are required; the other fields are `null` when missing, because the paid
+and expired samples differ. The webhook's `invoiceId` is not the one `create()` returned, so the
+docs match on `transactionId`.
+
+## D39. Invoice validation follows the live API
+
+Checked in the test environment: `amount` must be at least 1 (decimals are accepted, so the SDK
+allows two), `transactionId` 1–80 non-blank characters, `expiresIn` at least 1, and `callback`
+must be present (an empty string means none). Items need `remark` (the SDK sends `""` by default)
+but not `image`. Bonum accepts any text as `callback`, but the SDK requires an absolute `https:` or
+`http:` URL, because the browser is sent there. Provider codes must look like `QPAY`, since an
+unknown one fails with HTTP 500 rather than a clear error.
+
+## D40. `create_invoice` is the MCP server's first write tool
+
+Invoices are how a merchant gets paid by QPay, so the MCP server can create one. The tool is marked
+neither read-only nor idempotent, so clients ask before running it; its description asks the agent
+to confirm the amount, and with `BONUM_ENV=production` its output carries the production banner.
+`transactionId` is generated (`mcp-<UTC time>-<random>`) when omitted, so a repeated request never
+collides. The app secret and checksum key are redacted from every output like the other secrets.

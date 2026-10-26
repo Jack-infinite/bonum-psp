@@ -1,7 +1,16 @@
 import { inspect } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { depsFromEnv, startupNotes } from '../src/env.js';
-import { MERCHANT_KEY, SECRETS, testDeps, WEBHOOK_SECRET } from './helpers.js';
+import {
+  APP_SECRET,
+  CHECKSUM_KEY,
+  GATEWAY_ENV,
+  MERCHANT_KEY,
+  SECRETS,
+  TERMINAL_ID,
+  testDeps,
+  WEBHOOK_SECRET,
+} from './helpers.js';
 
 describe('depsFromEnv', () => {
   it('starts with nothing configured, in sandbox', () => {
@@ -91,7 +100,7 @@ describe('startupNotes', () => {
     const notes = startupNotes(testDeps());
     expect(notes).toEqual([
       expect.stringMatching(
-        /^\d+\.\d+\.\d+ serving MCP on stdio; Bonum sandbox \(https:\/\/testpsp\.bonum\.mn\); merchant key set, webhook secret set\.$/,
+        /^\d+\.\d+\.\d+ serving MCP on stdio; Bonum sandbox \(https:\/\/testpsp\.bonum\.mn\); merchant key set, webhook secret set, gateway credentials not set, gateway checksum key not set\.$/,
       ),
     ]);
   });
@@ -101,5 +110,40 @@ describe('startupNotes', () => {
     expect(notes[0]).toContain('merchant key not set, webhook secret not set');
     expect(notes.slice(1)).toEqual([expect.stringContaining('test webhooks are off')]);
     expect(startupNotes({ environment: 'sandbox', warnings: ['x'] })).toContain('warning: x');
+  });
+
+  it('reports gateway credentials without printing them', () => {
+    const notes = startupNotes(testDeps(GATEWAY_ENV));
+    expect(notes[0]).toContain('gateway credentials set, gateway checksum key set.');
+    for (const secret of SECRETS) expect(notes.join('\n')).not.toContain(secret);
+  });
+});
+
+describe('gateway variables', () => {
+  it('builds the gateway client and verifier, and redacts their secrets', () => {
+    const deps = depsFromEnv({ ...GATEWAY_ENV, BONUM_ENV: 'production' });
+    expect(deps.gateway?.environment).toBe('production');
+    expect(deps.gateway?.baseUrl).toBe('https://apis.bonum.mn');
+    expect(deps.gateway?.terminalId).toBe(TERMINAL_ID);
+    expect(deps.gatewayWebhooks).toBeDefined();
+    expect(deps.warnings).toEqual([]);
+    expect(deps.redact?.(`${APP_SECRET} ${CHECKSUM_KEY}`)).toBe('[redacted] [redacted]');
+  });
+
+  it('honours BONUM_GATEWAY_BASE_URL', () => {
+    const deps = depsFromEnv({ ...GATEWAY_ENV, BONUM_GATEWAY_BASE_URL: 'http://localhost:9000/' });
+    expect(deps.gateway?.baseUrl).toBe('http://localhost:9000');
+  });
+
+  it.each([
+    [{ BONUM_GATEWAY_APP_SECRET: APP_SECRET }, 'BONUM_GATEWAY_TERMINAL_ID is not set'],
+    [{ BONUM_GATEWAY_TERMINAL_ID: TERMINAL_ID }, 'BONUM_GATEWAY_APP_SECRET is not set'],
+    [{ ...GATEWAY_ENV, BONUM_GATEWAY_BASE_URL: 'ftp://x' }, 'the invoice tools are off: baseUrl'],
+    [{ ...GATEWAY_ENV, BONUM_GATEWAY_APP_SECRET: 'a b' }, 'whitespace'],
+  ])('switches the invoice tools off with a warning for %o', (env, warning) => {
+    const deps = depsFromEnv(env);
+    expect(deps.gateway).toBeUndefined();
+    expect(deps.warnings).toEqual([expect.stringContaining(warning)]);
+    expect(deps.warnings?.join(' ')).not.toContain('a b');
   });
 });

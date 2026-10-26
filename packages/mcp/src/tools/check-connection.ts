@@ -3,6 +3,7 @@ import {
   BonumAuthenticationError,
   type BonumClient,
   BonumConnectionError,
+  type BonumGatewayClient,
   BonumNotFoundError,
   BonumTimeoutError,
   isBonumError,
@@ -21,6 +22,12 @@ const outputSchema = z.object({
   webhookSecretConfigured: z.boolean().describe('Whether the webhook tools have a secret.'),
   auth: z.enum(AUTH_STATES).describe('Result of an authenticated request to Bonum.'),
   authDetail: z.string(),
+  gatewayConfigured: z.boolean().describe('Whether the invoice tools have gateway credentials.'),
+  gatewayChecksumKeyConfigured: z
+    .boolean()
+    .describe('Whether verify_invoice_webhook has the checksum key.'),
+  gatewayAuth: z.enum(AUTH_STATES).describe('Result of a token request to the Bonum Gateway.'),
+  gatewayAuthDetail: z.string(),
   warnings: z.array(z.string()).describe('Configuration problems to fix.'),
   serverVersion: z.string(),
 });
@@ -35,13 +42,17 @@ export function registerCheckConnection(server: McpServer, deps: ResolvedDeps): 
     description:
       'Start here. Shows which Bonum environment and base URL this server uses and which ' +
       'credentials are configured (never their values), and checks that Bonum accepts the ' +
-      'merchant key, using a lookup of a random payment id that touches no real payment.',
+      'merchant key (a lookup of a random payment id that touches no real payment) and the ' +
+      'gateway credentials of the invoice tools (a payment-provider list).',
     inputSchema: z.object({}),
     outputSchema,
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     callsBonum: true,
     async run(_input, signal) {
-      const { auth, authDetail } = await checkAuth(deps.client, signal);
+      const [{ auth, authDetail }, gatewayCheck] = await Promise.all([
+        checkAuth(deps.client, signal),
+        checkGateway(deps.gateway, signal),
+      ]);
       const data = {
         environment: deps.environment,
         baseUrl: deps.baseUrl,
@@ -49,6 +60,10 @@ export function registerCheckConnection(server: McpServer, deps: ResolvedDeps): 
         webhookSecretConfigured: deps.webhooks !== undefined,
         auth,
         authDetail,
+        gatewayConfigured: deps.gateway !== undefined,
+        gatewayChecksumKeyConfigured: deps.gatewayWebhooks !== undefined,
+        gatewayAuth: gatewayCheck.auth,
+        gatewayAuthDetail: gatewayCheck.authDetail,
         warnings: [...deps.warnings],
         serverVersion: VERSION,
       };
@@ -94,20 +109,63 @@ async function checkAuth(
   }
 }
 
+async function checkGateway(
+  gateway: BonumGatewayClient | undefined,
+  signal: AbortSignal,
+): Promise<{ auth: AuthState; authDetail: string }> {
+  if (gateway === undefined) {
+    return {
+      auth: 'not_configured',
+      authDetail:
+        'BONUM_GATEWAY_APP_SECRET and BONUM_GATEWAY_TERMINAL_ID are not both set, so the invoice ' +
+        'tools are off.',
+    };
+  }
+  try {
+    // Needs an access token, so it proves the app secret and terminal id.
+    await gateway.invoices.listProviders({ signal });
+    return {
+      auth: 'ok',
+      authDetail: `Bonum Gateway at ${gateway.baseUrl} accepted terminal ${gateway.terminalId}.`,
+    };
+  } catch (error) {
+    if (error instanceof BonumAuthenticationError) {
+      return {
+        auth: 'invalid_key',
+        authDetail:
+          'Bonum Gateway rejected the credentials (HTTP 401). Check BONUM_GATEWAY_APP_SECRET and ' +
+          'BONUM_GATEWAY_TERMINAL_ID, and that BONUM_ENV matches the environment they belong to.',
+      };
+    }
+    if (error instanceof BonumConnectionError || error instanceof BonumTimeoutError) {
+      return { auth: 'unreachable', authDetail: error.message };
+    }
+    if (isBonumError(error)) return { auth: 'error', authDetail: error.message };
+    throw error;
+  }
+}
+
 function summarize(data: {
   environment: string;
   baseUrl: string;
   webhookSecretConfigured: boolean;
   authDetail: string;
+  gatewayChecksumKeyConfigured: boolean;
+  gatewayAuthDetail: string;
   warnings: string[];
 }): string {
   const secret = data.webhookSecretConfigured
     ? 'set'
     : 'not set (verify_webhook, create_test_webhook and send_test_webhook need BONUM_WEBHOOK_SECRET)';
+  const checksumKey = data.gatewayChecksumKeyConfigured
+    ? 'set'
+    : 'not set (verify_invoice_webhook needs BONUM_GATEWAY_CHECKSUM_KEY)';
   return [
     `Bonum ${data.environment} at ${data.baseUrl}.`,
     `Merchant key: ${data.authDetail}`,
     `Webhook secret: ${secret}.`,
+    `Invoices: ${data.gatewayAuthDetail}`,
+    `Gateway checksum key: ${checksumKey}.`,
     ...data.warnings.map((warning) => `Warning: ${warning}`),
   ].join('\n');
 }

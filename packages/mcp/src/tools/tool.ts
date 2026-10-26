@@ -105,3 +105,30 @@ function withWarnings(deps: ResolvedDeps, message: string): string {
   if (deps.warnings.length === 0) return message;
   return `${message}\nConfiguration warnings: ${deps.warnings.join(' ')}`;
 }
+
+/** Returns the gateway client for the invoice tools, or explains how to configure it. */
+export function requireGateway(deps: ResolvedDeps): NonNullable<ResolvedDeps['gateway']> {
+  if (deps.gateway !== undefined) return deps.gateway;
+  throw new ToolError(
+    withWarnings(
+      deps,
+      'The invoice tools need Bonum Gateway credentials. Set BONUM_GATEWAY_APP_SECRET and ' +
+        'BONUM_GATEWAY_TERMINAL_ID (both from the Bonum merchant portal, for the same environment ' +
+        'as BONUM_ENV) in the env of the "bonum" MCP server, and restart the server.',
+    ),
+  );
+}
+
+/** Returns the gateway webhook verifier, or explains how to configure the checksum key. */
+export function requireGatewayWebhooks(
+  deps: ResolvedDeps,
+): NonNullable<ResolvedDeps['gatewayWebhooks']> {
+  if (deps.gatewayWebhooks !== undefined) return deps.gatewayWebhooks;
+  throw new ToolError(
+    withWarnings(
+      deps,
+      'This tool needs the gateway checksum key. Set BONUM_GATEWAY_CHECKSUM_KEY (Bonum sends it ' +
+        'to merchants separately) in the env of the "bonum" MCP server, and restart the server.',
+    ),
+  );
+}

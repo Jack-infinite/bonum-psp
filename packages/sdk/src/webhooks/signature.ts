@@ -127,7 +127,8 @@ function invalidSignatureFormat(): BonumWebhookError {
   );
 }
 
-function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
+/** Decodes an even-length hex string that was already checked against a pattern. */
+export function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(hex.length / 2);
   for (let index = 0; index < bytes.length; index += 1) {
     bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);

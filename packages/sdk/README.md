@@ -7,12 +7,14 @@
 [![license](https://img.shields.io/npm/l/bonum-psp)](./LICENSE)
 
 TypeScript SDK for **Bonum PSP V2**: submit Apple Pay and Google Pay payments from your server, get
-the bank's answer, and verify Bonum's webhooks.
+the bank's answer, and verify Bonum's webhooks. It also creates **Bonum Gateway invoices**: a
+checkout link where the customer pays with QPay, a card and more.
 
 - [Features](#features) · [Install](#install) · [How V2 works](#how-bonum-v2-works) ·
   [Quick start](#quick-start) · [Apple Pay](#apple-pay-flow) · [Google Pay](#google-pay-flow)
 - [Webhooks](#webhooks) · [Idempotency and reconciliation](#idempotency-and-reconciliation) ·
-  [Errors](#error-handling) · [Configuration](#configuration-reference)
+  [Errors](#error-handling) · [Configuration](#configuration-reference) ·
+  [Invoices (Gateway)](#invoices-bonum-gateway)
 - [Testing](#testing-your-integration) · [Tunnels](#local-webhook-testing-through-a-tunnel) ·
   [Security](#security-notes) · [Signature mismatch?](#troubleshooting-signature-mismatch) ·
   [FAQ](#faq)
@@ -25,6 +27,8 @@ the bank's answer, and verify Bonum's webhooks.
   typed events and secret rotation.
 - **Ready-made webhook handlers:** one Fetch API handler (Next.js, Hono, Cloudflare Workers, Bun,
   Deno) and an Express adapter (Express 4 and 5).
+- **Gateway invoices:** create an invoice with a hosted checkout link (QPay, cards, WeChat Pay and
+  more), with automatic access tokens and checksum-verified webhooks.
 - **Testing helpers:** realistic events and correctly signed webhooks for your own tests.
 - **Careful HTTP:** timeouts, cancellation with `AbortSignal`, and retries with backoff. Retrying a
   submission is safe because Bonum treats `order_id` as an idempotency key.
@@ -517,6 +521,108 @@ maps ISO numeric codes to letters (`'496'` → `'MNT'`; also USD, EUR and JPY), 
 lookups may report either form. The SDK itself never rewrites `currency`. Constants such as
 `PaymentStatus.AUTHORIZED`, `WalletType.APPLE_PAY` and `CurrencyCode.MNT` save you from typos.
 
+## Invoices (Bonum Gateway)
+
+Bonum's Gateway API works differently from PSP V2. You create an **invoice**, send the customer to
+Bonum's hosted checkout page, and the customer pays there with QPay, a card, WeChat Pay or another
+method enabled for your terminal. It has its own credentials, all from the
+[merchant portal](https://merchant.bonum.mn): an **app secret** and a **terminal id** for API calls,
+and a **checksum key** for webhooks. Bonum documents the API in its
+[Gateway API collection](https://documenter.getpostman.com/view/6164222/2sB2cYbzu8).
+
+```ts
+import { BonumGatewayClient } from 'bonum-psp';
+
+// Or set BONUM_GATEWAY_APP_SECRET, BONUM_GATEWAY_TERMINAL_ID, BONUM_GATEWAY_CHECKSUM_KEY and BONUM_ENV.
+const gateway = new BonumGatewayClient({
+  environment: 'sandbox', // https://testapi.bonum.mn; 'production' uses https://apis.bonum.mn
+  appSecret: process.env.BONUM_GATEWAY_APP_SECRET,
+  terminalId: process.env.BONUM_GATEWAY_TERMINAL_ID,
+  checksumKey: process.env.BONUM_GATEWAY_CHECKSUM_KEY,
+});
+
+const invoice = await gateway.invoices.create({
+  amount: 5000, // MNT
+  transactionId: 'ORD-1001-1', // unique for every invoice; webhooks carry it back
+  expiresIn: 900, // seconds
+  callbackUrl: 'https://shop.example/orders/ORD-1001', // where the browser returns afterwards
+  providers: ['QPAY'], // optional: offer only these payment methods
+});
+
+// Store invoice.transactionId with the order, then redirect the customer:
+// invoice.followUpLink is https://ecommerce.bonum.mn/ecommerce?invoiceId=...
+```
+
+Things to know:
+
+- **The result arrives only by webhook.** Bonum's invoice status endpoint is meant for its own
+  testing, and Bonum asks merchants not to call it in production, so the SDK does not offer it.
+  Keep the invoice in your database and update it when the webhook arrives.
+- **A `transactionId` is single-use.** Bonum answers a repeated one with HTTP 409
+  (`BonumAPIError`, `status: 409`), not with the earlier invoice. That is why `create()` is never
+  retried automatically. After a timeout the invoice may exist anyway: wait for its webhook, or
+  create a new invoice with a new `transactionId` (e.g. `ORD-1001-2`).
+- **Tokens are handled for you.** The client gets an access token with your app secret, reuses
+  it, refreshes it before it expires and renews it once if Bonum rejects it. Bonum rate-limits the
+  token endpoint, so create **one client per process** and reuse it.
+- **Validation happens first.** `amount` at least 1 with at most 2 decimal places, `transactionId`
+  1–80 characters, `expiresIn` a whole number of seconds, `callbackUrl` an absolute URL. Bad input
+  throws `BonumValidationError` without calling Bonum.
+- `gateway.invoices.listProviders()` shows which payment methods your terminal has switched on.
+  Bonum answers an unknown entry in `providers` with HTTP 500, so check this list first.
+
+### Invoice webhooks
+
+Register your webhook URL in the merchant portal. Bonum POSTs a JSON body with an `X-Checksum-V2`
+header, the hex HMAC-SHA256 of the body under your checksum key. Verify the **raw** body, as for
+PSP webhooks:
+
+```ts
+import express from 'express';
+import { BonumWebhookError } from 'bonum-psp';
+
+const rawJson = express.raw({ type: 'application/json' });
+
+app.post('/webhooks/bonum-gateway', rawJson, async (req, res) => {
+  let event;
+  try {
+    event = await gateway.webhooks.verify(req.body, req.headers);
+  } catch (error) {
+    if (!(error instanceof BonumWebhookError)) throw error;
+    // Acknowledge types this SDK does not handle (e.g. CARD-TOKEN), so Bonum stops retrying.
+    const ignored = error.reason === 'unsupported_event_type';
+    res.status(ignored ? 200 : 400).json({ error: error.reason });
+    return;
+  }
+  if (event.status === 'SUCCESS') {
+    // Compare the amount with your order before fulfilling.
+    await markPaid(event.transactionId, event.amount);
+  } else {
+    await markFailed(event.transactionId, event.invoiceStatus); // e.g. EXPIRED
+  }
+  res.json({ received: true });
+});
+```
+
+- Match webhooks to orders by **`transactionId`**. The webhook's `invoiceId` can differ from the
+  one `create()` returned.
+- These webhooks have **no timestamp**, so a captured one could be sent again. Make fulfilment
+  idempotent per `transactionId`, and check `amount`.
+- Fetch API frameworks can use `gateway.webhooks.verifyRequest(request)`. `new BonumGatewayWebhooks()`
+  verifies without the API credentials.
+- For your tests, `bonum-psp/testing` has `createTestInvoiceWebhook()` and
+  `signTestGatewayWebhook()`:
+
+```ts
+import { createTestInvoiceWebhook, signTestGatewayWebhook } from 'bonum-psp/testing';
+
+const { body, headers } = await signTestGatewayWebhook({
+  payload: createTestInvoiceWebhook({ transactionId: 'ORD-1001-1', amount: 5000 }),
+  checksumKey: 'test_checksum_key',
+});
+await fetch('http://localhost:3000/webhooks/bonum-gateway', { method: 'POST', body, headers });
+```
+
 ## Testing your integration
 
 `bonum-psp/testing` creates realistic events and signs them as Bonum would, so you can test your
@@ -636,7 +742,11 @@ minutes, your reconciliation job will pick the payment up.
 **Can I call Bonum from the browser or the app?** No. The merchant key would be public. The app
 sends the wallet token to your backend, and your backend calls Bonum.
 
-**Does it support Bonum V1?** No. Only the `/api/v2` endpoints are implemented.
+**Does it support Bonum V1?** No. Only the `/api/v2` endpoints are implemented, plus the Gateway
+invoice endpoints described above.
+
+**Can I check whether an invoice was paid?** Only through its webhook. Bonum's invoice status
+endpoint is for its own testing, so the SDK does not call it.
 
 **Is this official?** No. It is an independent open-source project, not affiliated with or
 endorsed by BONUM LLC.

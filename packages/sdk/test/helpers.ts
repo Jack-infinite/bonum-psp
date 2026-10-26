@@ -1,4 +1,10 @@
-import { BonumClient, type BonumClientOptions, type FetchFunction } from '../src/index.js';
+import {
+  BonumClient,
+  type BonumClientOptions,
+  BonumGatewayClient,
+  type BonumGatewayClientOptions,
+  type FetchFunction,
+} from '../src/index.js';
 
 /** Obviously fake credentials — never put a real key or secret in a test. */
 export const MERCHANT_KEY = 'mk_test_example';
@@ -146,3 +152,60 @@ export const authorizedEvent = {
   walletType: 'APPLE_PAY',
   binCategory: 'DOMESTIC',
 };
+
+/** Obviously fake gateway credentials. */
+export const APP_SECRET = 'app_secret_test_example';
+export const TERMINAL_ID = '00000001';
+export const CHECKSUM_KEY = 'test_checksum_key';
+export const GATEWAY = 'https://testapi.bonum.mn';
+export const TOKEN_PATH = '/bonum-gateway/ecommerce/auth/create';
+export const REFRESH_PATH = '/bonum-gateway/ecommerce/auth/refresh';
+export const INVOICES_PATH = '/bonum-gateway/ecommerce/invoices';
+
+/** A token grant like Bonum's, with distinguishable tokens. */
+export function tokenGrant(
+  n = 1,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    tokenType: 'Bearer ',
+    accessToken: `access-${n}`,
+    expiresIn: 1800,
+    refreshToken: `refresh-${n}`,
+    refreshExpiresIn: 2000,
+    unit: 'SECONDS',
+    ...overrides,
+  };
+}
+
+export const invoiceBody = {
+  invoiceId: '8cf2c49d200f049f2b384f0adf42b981c141b6f269a137ea9616ea93e80c9d4d',
+  followUpLink:
+    'https://testecommerce.bonum.mn/ecommerce?invoiceId=c511ea63fbc08e8ea2ca6879b07bf764',
+};
+
+/** The path of the n-th recorded call. */
+export function pathOf(fetch: { calls: RecordedCall[] }, index: number): string {
+  const call = fetch.calls[index];
+  if (call === undefined) throw new Error(`fakeFetch: no call #${index}`);
+  return new URL(call.url).pathname;
+}
+
+/** A sandbox gateway client with fake credentials, no real waiting and a controllable clock. */
+export function testGateway(
+  fetch: FetchFunction,
+  options: BonumGatewayClientOptions = {},
+): { gateway: BonumGatewayClient; clock: { now: number } } {
+  const clock = { now: 1_793_000_000_000 };
+  const gateway = new BonumGatewayClient({
+    appSecret: APP_SECRET,
+    terminalId: TERMINAL_ID,
+    environment: 'sandbox',
+    fetch,
+    sleep: async () => {},
+    random: () => 0.5,
+    now: () => clock.now,
+    ...options,
+  });
+  return { gateway, clock };
+}

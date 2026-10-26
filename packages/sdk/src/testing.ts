@@ -155,3 +155,11 @@ function withoutUndefined<T extends object>(fields: T): Partial<T> {
     Object.entries(fields).filter(([, value]) => value !== undefined),
   ) as Partial<T>;
 }
+
+export {
+  createTestInvoiceWebhook,
+  type SignedTestGatewayWebhook,
+  type SignTestGatewayWebhookInput,
+  signTestGatewayWebhook,
+  type TestInvoiceWebhookOverrides,
+} from './gateway/testing.js';

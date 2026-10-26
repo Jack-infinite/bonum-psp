@@ -8,12 +8,7 @@ export {
   BonumServerError,
 } from './api-errors.js';
 export { BonumClient } from './client.js';
-export {
-  BONUM_BASE_URLS,
-  type BonumClientOptions,
-  type FetchFunction,
-  type SleepFunction,
-} from './config.js';
+export { BONUM_BASE_URLS, type BonumClientOptions } from './config.js';
 export { CurrencyCode, normalizeCurrency } from './currency.js';
 export {
   BonumConfigError,
@@ -28,6 +23,19 @@ export {
   type BonumWebhookErrorReason,
   isBonumError,
 } from './errors.js';
+export {
+  BONUM_GATEWAY_BASE_URLS,
+  BonumGatewayClient,
+  type BonumGatewayClientOptions,
+} from './gateway/client.js';
+export {
+  type InvoicePaymentEvent,
+  InvoicePaymentStatus,
+} from './gateway/event.js';
+export type { Invoices } from './gateway/invoices.js';
+export type { CreateInvoiceParams, InvoiceItem, InvoiceLanguage } from './gateway/params.js';
+export { type Invoice, PaymentProvider, type PaymentProviderStatus } from './gateway/types.js';
+export { BonumGatewayWebhooks, type BonumGatewayWebhooksOptions } from './gateway/webhooks.js';
 export type {
   ApplePayPaymentData,
   ApplePayPaymentDataHeader,
@@ -39,6 +47,7 @@ export type {
   WaitForResultOptions,
 } from './params.js';
 export type { Payments } from './payments.js';
+export type { BonumTransportOptions, FetchFunction, SleepFunction } from './transport.js';
 export {
   type BonumEnvironment,
   isTerminalStatus,

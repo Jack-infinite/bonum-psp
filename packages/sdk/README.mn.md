@@ -7,13 +7,15 @@
 [![license](https://img.shields.io/npm/l/bonum-psp)](./LICENSE)
 
 **Bonum PSP V2**-д зориулсан TypeScript SDK: Apple Pay болон Google Pay төлбөрийг серверээсээ
-илгээж, банкны хариуг авч, Bonum-ын webhook-уудыг баталгаажуулна.
+илгээж, банкны хариуг авч, Bonum-ын webhook-уудыг баталгаажуулна. Мөн **Bonum Gateway нэхэмжлэх**
+үүсгэнэ: харилцагч QPay, карт болон бусад аргаар төлөх төлбөрийн холбоос.
 
 - [Боломжууд](#боломжууд) · [Суулгах](#суулгах) ·
   [V2 хэрхэн ажилладаг](#bonum-v2-хэрхэн-ажилладаг-вэ) · [Хурдан эхлэх](#хурдан-эхлэх) ·
   [Apple Pay](#apple-pay-ийн-урсгал) · [Google Pay](#google-pay-ийн-урсгал)
 - [Webhook](#webhook-ууд) · [Idempotency болон тулгалт](#idempotency-болон-тулгалт) ·
-  [Алдаа](#алдаа-боловсруулах) · [Тохиргоо](#тохиргооны-лавлах)
+  [Алдаа](#алдаа-боловсруулах) · [Тохиргоо](#тохиргооны-лавлах) ·
+  [Нэхэмжлэх (Gateway)](#нэхэмжлэх-bonum-gateway)
 - [Тест](#интеграцаа-тестлэх) · [Туннель](#туннель-ашиглан-webhook-ийг-локал-орчинд-тестлэх) ·
   [Аюулгүй байдал](#аюулгүй-байдлын-тэмдэглэл) ·
   [Signature mismatch?](#signature-mismatch-алдааг-шийдвэрлэх) ·
@@ -27,6 +29,8 @@
   халдлагаас хамгаалах 300 секундын цонх, төрөлжсөн үйл явдлууд, нууц түлхүүр солих (rotation).
 - **Бэлэн webhook handler-ууд:** нэг Fetch API handler (Next.js, Hono, Cloudflare Workers, Bun,
   Deno) болон Express adapter (Express 4 ба 5).
+- **Gateway нэхэмжлэх:** байршуулсан төлбөрийн холбоостой (QPay, карт, WeChat Pay гэх мэт)
+  нэхэмжлэх үүсгэнэ. Access token автоматаар, webhook-ууд checksum-аар баталгаажина.
 - **Тестийн туслахууд:** өөрийн тестэд зориулсан бодитой үйл явдлууд болон зөв гарын үсэгтэй
   webhook-ууд.
 - **Найдвартай HTTP:** timeout, `AbortSignal`-аар цуцлах, backoff бүхий retry. Bonum `order_id`-г
@@ -526,6 +530,110 @@ EUR, JPY), учир нь Bonum-ын хайлтууд аль ч хэлбэрий�
 дахин бичдэггүй. `PaymentStatus.AUTHORIZED`, `WalletType.APPLE_PAY`, `CurrencyCode.MNT` зэрэг
 тогтмолууд үсгийн алдаанаас хамгаална.
 
+## Нэхэмжлэх (Bonum Gateway)
+
+Bonum-ын Gateway API нь PSP V2-оос өөрөөр ажилладаг. Та **нэхэмжлэх** үүсгээд, харилцагчаа Bonum-ын
+байршуулсан төлбөрийн хуудас руу илгээнэ. Харилцагч тэнд QPay, карт, WeChat Pay эсвэл таны
+терминал дээр идэвхжүүлсэн өөр аргаар төлнө. Энэ API өөрийн гэсэн нэвтрэх мэдээлэлтэй бөгөөд бүгдийг
+[мерчантын портал](https://merchant.bonum.mn)-аас авна: API дуудлагад **app secret** болон
+**terminal id**, webhook-д **checksum key**. Bonum энэ API-г өөрийн
+[Gateway API цуглуулга](https://documenter.getpostman.com/view/6164222/2sB2cYbzu8)-д тайлбарласан.
+
+```ts
+import { BonumGatewayClient } from 'bonum-psp';
+
+// Or set BONUM_GATEWAY_APP_SECRET, BONUM_GATEWAY_TERMINAL_ID, BONUM_GATEWAY_CHECKSUM_KEY and BONUM_ENV.
+const gateway = new BonumGatewayClient({
+  environment: 'sandbox', // https://testapi.bonum.mn; 'production' uses https://apis.bonum.mn
+  appSecret: process.env.BONUM_GATEWAY_APP_SECRET,
+  terminalId: process.env.BONUM_GATEWAY_TERMINAL_ID,
+  checksumKey: process.env.BONUM_GATEWAY_CHECKSUM_KEY,
+});
+
+const invoice = await gateway.invoices.create({
+  amount: 5000, // MNT
+  transactionId: 'ORD-1001-1', // unique for every invoice; webhooks carry it back
+  expiresIn: 900, // seconds
+  callbackUrl: 'https://shop.example/orders/ORD-1001', // where the browser returns afterwards
+  providers: ['QPAY'], // optional: offer only these payment methods
+});
+
+// Store invoice.transactionId with the order, then redirect the customer:
+// invoice.followUpLink is https://ecommerce.bonum.mn/ecommerce?invoiceId=...
+```
+
+Мэдэх зүйлс:
+
+- **Үр дүн зөвхөн webhook-оор ирнэ.** Bonum-ын нэхэмжлэхийн төлөв шалгах endpoint нь зөвхөн
+  Bonum-ын өөрийн тестэд зориулагдсан бөгөөд Bonum мерчантуудаас үүнийг production-д дуудахгүй
+  байхыг хүсдэг. Тиймээс SDK үүнийг санал болгодоггүй. Нэхэмжлэхээ өөрийн өгөгдлийн санд хадгалж,
+  webhook ирэхэд шинэчил.
+- **`transactionId` нэг л удаа хэрэглэгдэнэ.** Bonum давтагдсан утгад өмнөх нэхэмжлэхийг биш,
+  HTTP 409 (`BonumAPIError`, `status: 409`) буцаадаг. Иймээс `create()`-ийг хэзээ ч автоматаар
+  дахин оролддоггүй. Timeout болсны дараа нэхэмжлэх үүссэн байж болно: түүний webhook-ийг хүлээ,
+  эсвэл шинэ `transactionId`-тай (жишээ нь `ORD-1001-2`) шинэ нэхэмжлэх үүсгэ.
+- **Токеныг таны өмнөөс зохицуулна.** Клиент таны app secret-ээр access token авч, дахин ашиглаж,
+  хугацаа нь дуусахаас өмнө сэргээж, Bonum татгалзвал нэг удаа шинэчилнэ. Bonum токены endpoint-ийн
+  хүсэлтийн тоог хязгаарладаг тул **процесс бүрт нэг клиент** үүсгээд дахин ашигла.
+- **Эхлээд шалгана.** `amount` дор хаяж 1, хамгийн ихдээ 2 аравтын оронтой, `transactionId`
+  1–80 тэмдэгт, `expiresIn` бүхэл секунд, `callbackUrl` бүтэн URL байна. Буруу утга Bonum-ыг
+  дуудалгүйгээр `BonumValidationError` шиднэ.
+- `gateway.invoices.listProviders()` таны терминал дээр ямар төлбөрийн аргууд идэвхтэй байгааг
+  харуулна. Bonum `providers` доторх үл мэдэгдэх утгад HTTP 500 буцаадаг тул эхлээд энэ жагсаалтыг
+  шалга.
+
+### Нэхэмжлэхийн webhook-ууд
+
+Webhook URL-аа мерчантын порталд бүртгүүл. Bonum JSON биеийг `X-Checksum-V2` header-тэй POST
+хийдэг. Энэ header нь таны checksum key-ээр тооцсон биеийн hex HMAC-SHA256 юм. PSP webhook-ийн
+адилаар **түүхий (raw)** биеийг баталгаажуул:
+
+```ts
+import express from 'express';
+import { BonumWebhookError } from 'bonum-psp';
+
+const rawJson = express.raw({ type: 'application/json' });
+
+app.post('/webhooks/bonum-gateway', rawJson, async (req, res) => {
+  let event;
+  try {
+    event = await gateway.webhooks.verify(req.body, req.headers);
+  } catch (error) {
+    if (!(error instanceof BonumWebhookError)) throw error;
+    // Acknowledge types this SDK does not handle (e.g. CARD-TOKEN), so Bonum stops retrying.
+    const ignored = error.reason === 'unsupported_event_type';
+    res.status(ignored ? 200 : 400).json({ error: error.reason });
+    return;
+  }
+  if (event.status === 'SUCCESS') {
+    // Compare the amount with your order before fulfilling.
+    await markPaid(event.transactionId, event.amount);
+  } else {
+    await markFailed(event.transactionId, event.invoiceStatus); // e.g. EXPIRED
+  }
+  res.json({ received: true });
+});
+```
+
+- Webhook-ийг захиалгатай **`transactionId`**-аар тааруул. Webhook доторх `invoiceId` нь
+  `create()`-ийн буцаасан утгаас ялгаатай байж болно.
+- Эдгээр webhook-д **timestamp байхгүй** тул барьж авсан webhook-ийг дахин илгээх боломжтой.
+  Захиалга биелүүлэхийг `transactionId` тус бүрээр idempotent болгож, `amount`-ийг шалга.
+- Fetch API framework-ууд `gateway.webhooks.verifyRequest(request)` ашиглаж болно.
+  `new BonumGatewayWebhooks()` API-ийн нэвтрэх мэдээлэлгүйгээр баталгаажуулна.
+- Өөрийн тестэд зориулж `bonum-psp/testing` нь `createTestInvoiceWebhook()` болон
+  `signTestGatewayWebhook()`-тэй:
+
+```ts
+import { createTestInvoiceWebhook, signTestGatewayWebhook } from 'bonum-psp/testing';
+
+const { body, headers } = await signTestGatewayWebhook({
+  payload: createTestInvoiceWebhook({ transactionId: 'ORD-1001-1', amount: 5000 }),
+  checksumKey: 'test_checksum_key',
+});
+await fetch('http://localhost:3000/webhooks/bonum-gateway', { method: 'POST', body, headers });
+```
+
 ## Интеграцаа тестлэх
 
 `bonum-psp/testing` нь бодитой үйл явдлуудыг үүсгэж, Bonum-ын адилаар гарын үсэг зурдаг тул webhook
@@ -649,7 +757,11 @@ encode хий. Ямар нэг зүйл дутуу бол `submitApplePay` хү�
 **Bonum-ыг браузер эсвэл аппаас дуудаж болох уу?** Үгүй. Мерчант түлхүүр нийтэд ил болно. Апп
 wallet токеныг таны backend руу илгээж, таны backend Bonum-ыг дуудна.
 
-**Bonum V1-ийг дэмждэг үү?** Үгүй. Зөвхөн `/api/v2` endpoint-уудыг хэрэгжүүлсэн.
+**Bonum V1-ийг дэмждэг үү?** Үгүй. Зөвхөн `/api/v2` endpoint-ууд болон дээр тайлбарласан Gateway
+нэхэмжлэхийн endpoint-уудыг хэрэгжүүлсэн.
+
+**Нэхэмжлэх төлөгдсөн эсэхийг шалгаж болох уу?** Зөвхөн түүний webhook-оор. Bonum-ын нэхэмжлэхийн
+төлөв шалгах endpoint нь Bonum-ын өөрийн тестэд зориулагдсан тул SDK үүнийг дууддаггүй.
 
 **Энэ албан ёсны уу?** Үгүй. Энэ бол BONUM ХХК-тай холбоогүй, тэдний дэмжлэггүй, бие даасан
 нээлттэй эхийн төсөл.

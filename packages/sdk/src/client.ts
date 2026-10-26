@@ -26,10 +26,10 @@ export class BonumClient {
   #webhooks: BonumWebhooks | undefined;
 
   constructor(options: BonumClientOptions = {}) {
-    const { config, merchantKey } = resolveClientConfig(options);
+    const { config, profile } = resolveClientConfig(options);
     this.environment = config.environment;
     this.baseUrl = config.baseUrl;
-    this.payments = new Payments(new HttpClient(config, merchantKey));
+    this.payments = new Payments(new HttpClient(config, profile));
     // An explicit secret is validated now; the env fallback waits until webhooks are first used.
     if (options.webhookSecret !== undefined) {
       this.#webhooks = new BonumWebhooks({ secret: options.webhookSecret });

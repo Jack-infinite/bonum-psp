@@ -2,6 +2,8 @@ import {
   BONUM_BASE_URLS,
   type BonumClient,
   type BonumEnvironment,
+  type BonumGatewayClient,
+  type BonumGatewayWebhooks,
   type FetchFunction,
 } from 'bonum-psp';
 import type { Redactor } from './redact.js';
@@ -25,6 +27,10 @@ export interface BonumMcpServerDeps {
   client?: BonumClient | undefined;
   /** Verifier and signer for the webhook tools. Without one they explain `BONUM_WEBHOOK_SECRET`. */
   webhooks?: WebhookToolkit | undefined;
+  /** Client for the invoice tools. Without one they explain the `BONUM_GATEWAY_*` variables. */
+  gateway?: BonumGatewayClient | undefined;
+  /** Verifier for `verify_invoice_webhook`. Without one it explains `BONUM_GATEWAY_CHECKSUM_KEY`. */
+  gatewayWebhooks?: BonumGatewayWebhooks | undefined;
   /** Configuration problems, phrased for the user. `check_connection` lists them. */
   warnings?: readonly string[] | undefined;
   /** Lets `send_test_webhook` reach hosts other than localhost and `*.test`. Default `false`. */
@@ -43,6 +49,8 @@ export interface ResolvedDeps {
   readonly baseUrl: string;
   readonly client: BonumClient | undefined;
   readonly webhooks: WebhookToolkit | undefined;
+  readonly gateway: BonumGatewayClient | undefined;
+  readonly gatewayWebhooks: BonumGatewayWebhooks | undefined;
   readonly warnings: readonly string[];
   readonly allowRemoteWebhookTargets: boolean;
   readonly fetch: FetchFunction;
@@ -57,6 +65,8 @@ export function resolveDeps(deps: BonumMcpServerDeps): ResolvedDeps {
     baseUrl: deps.baseUrl ?? deps.client?.baseUrl ?? BONUM_BASE_URLS[deps.environment],
     client: deps.client,
     webhooks: deps.webhooks,
+    gateway: deps.gateway,
+    gatewayWebhooks: deps.gatewayWebhooks,
     warnings: deps.warnings ?? [],
     allowRemoteWebhookTargets: deps.allowRemoteWebhookTargets ?? false,
     fetch: deps.fetch ?? ((url, init) => globalThis.fetch(url, init)),

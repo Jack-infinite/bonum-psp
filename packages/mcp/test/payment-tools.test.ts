@@ -33,16 +33,19 @@ async function withBonum(
 }
 
 describe('tool list', () => {
-  it('describes all seven tools with schemas and accurate annotations', async () => {
+  it('describes all ten tools with schemas and accurate annotations', async () => {
     const { mcp } = await withBonum(() => json({}));
     const { tools } = await mcp.client.listTools();
     const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
     expect(Object.keys(byName).sort()).toEqual([
       'check_connection',
+      'create_invoice',
       'create_test_webhook',
       'get_payment',
       'get_payment_by_order_id',
+      'list_payment_providers',
       'send_test_webhook',
+      'verify_invoice_webhook',
       'verify_webhook',
       'wait_for_payment_result',
     ]);
@@ -65,6 +68,13 @@ describe('tool list', () => {
       openWorldHint: true,
     });
     expect(byName.verify_webhook?.annotations).toMatchObject({ openWorldHint: false });
+    expect(byName.create_invoice?.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+    expect(byName.verify_invoice_webhook?.annotations).toMatchObject({ openWorldHint: false });
     expect(byName.send_test_webhook?.annotations).toEqual({
       readOnlyHint: false,
       destructiveHint: false,

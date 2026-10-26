@@ -8,6 +8,8 @@ export interface FieldReader {
   nullableString(key: string): string | null;
   /** A decimal kept as a string; a JSON number is converted to its exact decimal text. */
   decimalString(key: string): string;
+  /** Like `decimalString`, but absent or `null` gives `null`. */
+  nullableDecimalString(key: string): string | null;
   /** A boolean, or absent/`null` (→ `false`). */
   flag(key: string): boolean;
   /** One of the allowed string values. */
@@ -36,6 +38,11 @@ export function readFields(data: unknown, fail: (problem: string) => Error): Fie
     decimalString(key) {
       const value = data[key];
       // Bonum documents strings, but some of its own samples show numbers. String() keeps the value.
+      return typeof value === 'number' && Number.isFinite(value) ? String(value) : string(key);
+    },
+    nullableDecimalString(key) {
+      const value = data[key];
+      if (value === undefined || value === null) return null;
       return typeof value === 'number' && Number.isFinite(value) ? String(value) : string(key);
     },
     flag(key) {

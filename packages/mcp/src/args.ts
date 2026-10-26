@@ -10,8 +10,9 @@ export type CliCommand =
 /** Usage text printed by `bonum-psp-mcp --help`. */
 export const HELP_TEXT: string = `Usage: bonum-psp-mcp [--help] [--version]
 
-Runs the Bonum PSP V2 MCP server over stdio. MCP clients (Claude Code, Codex,
-Cursor, Claude Desktop, ...) start it for you; you rarely run it by hand.
+Runs the Bonum MCP server (PSP V2 payments, Gateway invoices) over stdio.
+MCP clients (Claude Code, Codex, Cursor, Claude Desktop, ...) start it for
+you; you rarely run it by hand.
 
 Environment variables:
   BONUM_MERCHANT_KEY                       merchant API key (payment lookup tools)
@@ -19,6 +20,10 @@ Environment variables:
   BONUM_ENV                                sandbox (default) or production
   BONUM_BASE_URL                           optional API base URL override (e.g. a proxy)
   BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS   true to let send_test_webhook reach non-local hosts
+  BONUM_GATEWAY_APP_SECRET                 gateway app secret (invoice tools)
+  BONUM_GATEWAY_TERMINAL_ID                gateway terminal id (invoice tools)
+  BONUM_GATEWAY_CHECKSUM_KEY               gateway webhook checksum key (verify_invoice_webhook)
+  BONUM_GATEWAY_BASE_URL                   optional gateway base URL override
 
 Docs: https://github.com/Jack-infinite/bonum-psp/tree/main/packages/mcp#readme
 `;

@@ -8,10 +8,16 @@ import {
 } from './types.js';
 
 const STATUSES: readonly PaymentStatus[] = Object.values(PaymentStatus);
-const REPORT =
+/** Closing sentence of unexpected-response errors. */
+export const REPORT: string =
   'If Bonum changed its API, please report it at https://github.com/Jack-infinite/bonum-psp/issues.';
 
-function unexpected(what: string, advice: string, body: unknown): (problem: string) => Error {
+/** Builds the error for a response that does not have the documented shape. */
+export function unexpected(
+  what: string,
+  advice: string,
+  body: unknown,
+): (problem: string) => Error {
   return (problem) =>
     new BonumUnexpectedResponseError(
       `Unexpected ${what} from Bonum: ${problem}. ${advice} ${REPORT}`,

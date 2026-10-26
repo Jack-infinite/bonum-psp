@@ -25,7 +25,7 @@ describe('built CLI (dist/cli.js)', () => {
   });
 
   it.each(['legacy', 'auto'] as const)(
-    'serves 7 tools, 4 resources and 3 prompts over stdio (%s negotiation)',
+    'serves 10 tools, 4 resources and 3 prompts over stdio (%s negotiation)',
     async (mode) => {
       const transport = new StdioClientTransport({
         command: process.execPath,
@@ -49,7 +49,7 @@ describe('built CLI (dist/cli.js)', () => {
       await client.connect(transport);
       try {
         expect(client.getServerVersion()).toMatchObject({ name: 'bonum', version: VERSION });
-        expect(record(await client.listTools()).tools).toHaveLength(7);
+        expect(record(await client.listTools()).tools).toHaveLength(10);
         expect(record(await client.listResources()).resources).toHaveLength(4);
         expect(record(await client.listPrompts()).prompts).toHaveLength(3);
         const created = record(
