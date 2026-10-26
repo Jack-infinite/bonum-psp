@@ -5,5 +5,8 @@ export default defineProject({
     name: 'mcp',
     include: ['test/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['test/setup.ts'],
+    unstubEnvs: true,
+    restoreMocks: true,
   },
 });

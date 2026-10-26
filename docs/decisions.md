@@ -137,3 +137,68 @@ The Express example runs its TypeScript directly with Node's type stripping (Nod
 so it needs no build step. The Next.js example builds with `next build` on TypeScript 7, so no
 TypeScript 6 fallback is needed anywhere. Its route handler creates the webhook verifier on the
 first request, so `next build` does not need the secret.
+
+## D20. The MCP server is also a small library
+
+Besides the CLI, `bonum-psp-mcp` exports `createBonumMcpServer(deps)` and `depsFromEnv(env)`, so the
+server can be embedded (for example over HTTP with the MCP SDK's handlers) and tested in-process.
+`deps` can carry everything the CLI reads from the environment: base URL, warnings, the remote-target
+switch and the redactor, besides the brief's client, `fetch` and `now`. `webhooks` is a two-method
+`WebhookToolkit` (verify and sign) rather than a `BonumWebhooks`, because the test tools sign with the
+same secret. The secret stays in a closure. The smoke test speaks both the current MCP handshake and
+the legacy one, because clients upgrade at different times.
+
+## D21. The MCP server always starts
+
+`depsFromEnv` never throws. A missing or invalid value switches off only the tools that need it. It
+becomes a warning that the CLI prints to stderr at startup, `check_connection` lists, and the
+affected tools repeat. `BONUM_ENV` must be exactly `sandbox` or `production`. Anything else falls
+back to sandbox with a warning: unlike the SDK, which never guesses, the MCP server is a development
+tool, and sandbox is the safe side. `BONUM_MCP_ALLOW_REMOTE_WEBHOOK_TARGETS` accepts only `true` and
+`false`; any other value warns and stays `false`.
+
+## D22. Shorter API timeouts in the MCP server
+
+The MCP server's client uses a 10 s timeout and one retry, instead of the SDK's 15 s and two. A tool
+call then answers within about 20 s, well inside the tool-call limits of common MCP clients.
+`wait_for_payment_result` keeps the SDK's own rule: no retry, and an HTTP timeout of `waitMs + 5 s`.
+
+## D23. Tool handlers catch their own errors
+
+The MCP SDK turns an exception into an error result that carries the raw message, which would skip
+redaction. Every tool therefore catches errors itself and returns them as `isError` results. All
+text and `structuredContent` then pass through the redactor, which replaces the configured key and
+secret (longest first) with `[redacted]`. SDK messages never contain secrets in the first place, so
+this is the last line of defense. After every test, the MCP suite scans everything the server sent
+for the configured key and secret. The test secrets differ from the documentation placeholders,
+which the prompts may show legitimately.
+
+## D24. Production results are labelled, errors included
+
+With `BONUM_ENV=production`, the text of every result from a tool that calls Bonum starts with a
+production warning, error results included: a 404 from production is live data too. Successful
+results also carry `environment` in `structuredContent`. `create_test_webhook` and
+`send_test_webhook` refuse to run at all (D4).
+
+## D25. How `send_test_webhook` judges an endpoint
+
+`scenario` defaults to `all`, and `create_test_webhook`'s `eventType` defaults to `AUTHORIZED`, so
+"test my webhook" needs nothing but a URL. Scenarios run one after another, so the duplicate pair is
+not mixed up with other deliveries. The forged webhook is signed with a fresh random secret, and the
+stale one is signed correctly but 10 minutes old (twice the tolerance). A 2xx to either is a
+security failure, and the summary opens with it. A 5xx to either is a warning, because Bonum would
+retry. A 3xx always fails: the tool does not follow redirects (D4), so the handler never saw the
+event.
+
+## D26. Extra output fields
+
+Some MCP tools return more than the brief lists. `verify_webhook` adds `message`, the SDK's
+explanation of `reason`. `create_test_webhook` adds `expiresAt`, when the signature leaves the
+five-minute window. The payment tools add `normalizedCurrency` next to the unchanged `currency`
+(D11). `check_connection` reports `auth` as `ok`, `invalid_key`, `unreachable`, `error` or
+`not_configured`, plus the configuration warnings.
+
+## D27. Prompts stand on their own
+
+Some MCP clients support tools and prompts but not resources. Each prompt therefore states the rules
+it relies on in its own text, and points to the `bonum://` resources only for further reading.

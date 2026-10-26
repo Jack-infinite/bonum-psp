@@ -51,5 +51,13 @@
     "typecheck": "tsc -p tsconfig.lib.json && tsc -p tsconfig.json",
     "test": "vitest run",
     "lint:package": "publint --strict && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "bonum-psp": "workspace:^",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0"
   }
 }
