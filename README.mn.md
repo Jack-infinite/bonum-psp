@@ -79,6 +79,9 @@ mkdir -p .claude/skills && cp -R /tmp/bonum-psp/skills/bonum-psp-integration .cl
 - [`examples/nextjs-app-router`](./examples/nextjs-app-router): webhook хүлээн авах Next.js route
   handler.
 
+Sandbox, production болон тестийг хэрхэн тохируулахыг
+[`docs/environments.mn.md`](./docs/environments.mn.md) тайлбарласан.
+
 ## Bonum-ын албан ёсны баримт бичиг
 
 - [Интеграцын заавар](https://psp.bonum.mn/v2/integration-guide.html)

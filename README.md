@@ -79,6 +79,9 @@ invoke it directly with `/bonum-psp-integration`.
 - [`examples/nextjs-app-router`](./examples/nextjs-app-router): a Next.js route handler for
   webhooks.
 
+[`docs/environments.md`](./docs/environments.md) explains how to set up sandbox, production and
+tests.
+
 ## Official Bonum documentation
 
 - [Integration guide](https://psp.bonum.mn/v2/integration-guide.html)
